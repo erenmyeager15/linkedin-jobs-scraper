@@ -1,0 +1,13 @@
+{
+  "keywords": ["software engineer"],
+  "locations": ["London, UK"],
+  "workplaceType": [],
+  "jobType": [],
+  "experienceLevel": [],
+  "maxResults": 10,
+  "maxJobsPerSearch": 10,
+  "proxyConfiguration": {
+    "useApifyProxy": true,
+    "apifyProxyGroups": ["RESIDENTIAL"]
+  }
+}

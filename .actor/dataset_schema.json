@@ -1,0 +1,65 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "type": "object",
+    "properties": {
+      "jobTitle": { "type": ["string", "null"], "title": "Job Title", "example": "Senior Software Engineer" },
+      "companyName": { "type": ["string", "null"], "title": "Company", "example": "Acme Corp" },
+      "jobLocation": { "type": ["string", "null"], "title": "Location", "example": "London, UK" },
+      "workplaceType": { "type": ["string", "null"], "title": "Workplace", "example": "Hybrid" },
+      "jobType": { "type": ["string", "null"], "title": "Job Type", "example": "Full-time" },
+      "experienceLevel": { "type": ["string", "null"], "title": "Level", "example": "Mid-Senior level" },
+      "salaryRange": { "type": ["string", "null"], "title": "Salary", "example": "$120,000 - $150,000" },
+      "postedDate": { "type": ["string", "null"], "title": "Posted", "example": "2 days ago" },
+      "numberOfApplicants": { "type": ["integer", "null"], "title": "Applicants", "example": 47 },
+      "requiredSkills": { "type": "array", "title": "Skills", "items": { "type": "string" }, "example": ["Python", "AWS"] },
+      "easyApply": { "type": "boolean", "title": "Easy Apply", "example": true },
+      "companyIndustry": { "type": ["string", "null"], "title": "Industry", "example": "Software Development" },
+      "companySize": { "type": ["string", "null"], "title": "Company Size", "example": "1,001-5,000 employees" },
+      "applyUrl": { "type": ["string", "null"], "title": "Apply URL", "example": "https://www.linkedin.com/jobs/view/123" },
+      "jobId": { "type": "string", "title": "Job ID", "example": "3812345678" },
+      "keywordUsed": { "type": "string", "title": "Keyword", "example": "software engineer" },
+      "locationUsed": { "type": "string", "title": "Search Location", "example": "London, UK" },
+      "scrapedAt": { "type": "string", "title": "Scraped At", "example": "2026-06-10T12:00:00.000Z" }
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "LinkedIn Jobs",
+      "description": "Job listings scraped from LinkedIn.",
+      "transformation": {
+        "fields": [
+          "jobTitle",
+          "companyName",
+          "jobLocation",
+          "workplaceType",
+          "jobType",
+          "experienceLevel",
+          "salaryRange",
+          "postedDate",
+          "numberOfApplicants",
+          "easyApply",
+          "applyUrl",
+          "scrapedAt"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "jobTitle": { "label": "Job Title", "format": "text" },
+          "companyName": { "label": "Company", "format": "text" },
+          "jobLocation": { "label": "Location", "format": "text" },
+          "workplaceType": { "label": "Workplace", "format": "text" },
+          "jobType": { "label": "Type", "format": "text" },
+          "experienceLevel": { "label": "Level", "format": "text" },
+          "salaryRange": { "label": "Salary", "format": "text" },
+          "postedDate": { "label": "Posted", "format": "text" },
+          "numberOfApplicants": { "label": "Applicants", "format": "number" },
+          "easyApply": { "label": "Easy Apply", "format": "boolean" },
+          "applyUrl": { "label": "Apply", "format": "link" },
+          "scrapedAt": { "label": "Scraped At", "format": "date" }
+        }
+      }
+    }
+  }
+}

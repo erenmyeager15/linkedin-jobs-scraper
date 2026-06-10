@@ -1,0 +1,26 @@
+{
+  "name": "linkedin-jobs-scraper",
+  "version": "1.0.0",
+  "description": "Apify Actor that scrapes LinkedIn Jobs for job listings at scale",
+  "type": "module",
+  "main": "src/main.ts",
+  "scripts": {
+    "start": "npm run build && node dist/main.js",
+    "start:prod": "node dist/main.js",
+    "build": "tsc",
+    "dev": "tsx src/main.ts",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "apify": "^3.2.0",
+    "crawlee": "^3.10.0",
+    "playwright": "^1.60.0"
+  },
+  "devDependencies": {
+    "@tsconfig/node20": "^20.1.2",
+    "@types/node": "^20.11.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

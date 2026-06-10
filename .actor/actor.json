@@ -1,0 +1,33 @@
+{
+  "actorSpecification": 1,
+  "name": "linkedin-jobs-scraper",
+  "title": "LinkedIn Jobs Scraper - Listings, Salaries & Skills",
+  "description": "Scrape LinkedIn Jobs for listings by keyword, location, and filters. Extracts job title, company, description, salary, skills, workplace type, experience level, and more. No login required.",
+  "version": "1.0",
+  "dockerfile": "Dockerfile",
+  "input": "../INPUT_SCHEMA.json",
+  "pricingInfo": {
+    "pricingModel": "PAY_PER_EVENT",
+    "pricingPerEvent": {
+      "actorChargeEvents": {
+        "job-scraped": {
+          "eventTitle": "Job scraped",
+          "eventDescription": "Charged once for each job listing successfully scraped to the dataset.",
+          "eventPriceUsd": 0.0015,
+          "isPrimaryEvent": true,
+          "isOneTimeEvent": false
+        }
+      }
+    }
+  },
+  "categories": ["JOBS", "BUSINESS", "LEAD_GENERATION"],
+  "minMemoryMbytes": 2048,
+  "maxMemoryMbytes": 8192,
+  "defaultRunOptions": {
+    "memoryMbytes": 4096,
+    "timeoutSecs": 43200
+  },
+  "storages": {
+    "dataset": "./dataset_schema.json"
+  }
+}

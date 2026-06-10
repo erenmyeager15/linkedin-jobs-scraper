@@ -1,0 +1,91 @@
+{
+  "title": "LinkedIn Jobs Scraper Input",
+  "description": "Configure your LinkedIn Jobs scraping run",
+  "type": "object",
+  "schemaVersion": 1,
+  "required": ["keywords", "locations"],
+  "properties": {
+    "keywords": {
+      "title": "Job Keywords",
+      "type": "array",
+      "description": "Job titles, skills, or search terms to query",
+      "editor": "stringList",
+      "prefill": ["software engineer"],
+      "default": ["software engineer"]
+    },
+    "locations": {
+      "title": "Locations",
+      "type": "array",
+      "description": "City, region, or country for job search",
+      "editor": "stringList",
+      "prefill": ["London, UK"],
+      "default": ["London, UK"]
+    },
+    "workplaceType": {
+      "title": "Workplace Type",
+      "type": "array",
+      "description": "Filter by workplace type",
+      "editor": "select",
+      "items": { "type": "string", "enum": ["remote", "hybrid", "onsite"] },
+      "default": []
+    },
+    "jobType": {
+      "title": "Job Type",
+      "type": "array",
+      "description": "Filter by employment type",
+      "editor": "select",
+      "items": { "type": "string", "enum": ["full-time", "part-time", "contract", "internship", "temporary", "volunteer"] },
+      "default": []
+    },
+    "experienceLevel": {
+      "title": "Experience Level",
+      "type": "array",
+      "description": "Filter by seniority level",
+      "editor": "select",
+      "items": { "type": "string", "enum": ["internship", "entry", "associate", "mid-senior", "director", "executive"] },
+      "default": []
+    },
+    "maxResults": {
+      "title": "Max Results (total)",
+      "type": "integer",
+      "description": "Maximum number of jobs to scrape across all searches",
+      "editor": "number",
+      "default": 50,
+      "maximum": 5000,
+      "minimum": 1
+    },
+    "maxJobsPerSearch": {
+      "title": "Max Jobs Per Search",
+      "type": "integer",
+      "description": "Maximum jobs to scrape per keyword + location combination",
+      "editor": "number",
+      "default": 25,
+      "maximum": 500,
+      "minimum": 1
+    },
+    "proxyConfiguration": {
+      "title": "Proxy Configuration",
+      "type": "object",
+      "description": "Apify proxy settings (residential recommended for LinkedIn)",
+      "default": {
+        "useApifyProxy": true,
+        "apifyProxyGroups": ["RESIDENTIAL"]
+      },
+      "properties": {
+        "useApifyProxy": {
+          "title": "Use Apify Proxy",
+          "type": "boolean",
+          "description": "Enable Apify proxy rotation",
+          "default": true
+        },
+        "apifyProxyGroups": {
+          "title": "Proxy Groups",
+          "type": "array",
+          "description": "Proxy groups to use (RESIDENTIAL recommended)",
+          "editor": "stringList",
+          "default": ["RESIDENTIAL"]
+        }
+      }
+    }
+  }
+}
