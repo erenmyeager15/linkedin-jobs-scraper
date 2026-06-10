@@ -67,24 +67,10 @@
       "title": "Proxy Configuration",
       "type": "object",
       "description": "Apify proxy settings (residential recommended for LinkedIn)",
+      "editor": "proxy",
       "default": {
         "useApifyProxy": true,
         "apifyProxyGroups": ["RESIDENTIAL"]
-      },
-      "properties": {
-        "useApifyProxy": {
-          "title": "Use Apify Proxy",
-          "type": "boolean",
-          "description": "Enable Apify proxy rotation",
-          "default": true
-        },
-        "apifyProxyGroups": {
-          "title": "Proxy Groups",
-          "type": "array",
-          "description": "Proxy groups to use (RESIDENTIAL recommended)",
-          "editor": "stringList",
-          "default": ["RESIDENTIAL"]
-        }
       }
     }
   }
