@@ -2,11 +2,13 @@
 
 ## Description
 
+Scrape LinkedIn job listings at scale and turn them into a clean, deduplicated dataset — job titles, companies, salaries, required skills, workplace type, experience level, applicant counts, and more. This LinkedIn Jobs scraper runs from simple keywords and locations with no login and no API key. Export to JSON, CSV, Excel, or HTML, or pull via the Apify API.
+
 Scrape LinkedIn Jobs at scale with this production-ready Apify Actor. Supply job keywords and locations, and the Actor extracts comprehensive job listing data including titles, companies, descriptions, salaries, required skills, workplace type, job type, experience level, applicant counts, and more.
 
 Built on Crawlee's PlaywrightCrawler with residential proxy rotation, session pool management, and intelligent anti-bot countermeasures, this Actor reliably scrapes LinkedIn without getting blocked. Each search supports pagination up to 500 job listings, and multiple keyword + location combinations can be run in a single execution.
 
-Deduplication by LinkedIn job ID ensures clean, unique results. A pay-per-event model charges $0.003 per successfully scraped job, making it affordable at any scale.
+Deduplication by LinkedIn job ID ensures clean, unique results. A pay-per-event model charges $0.0015 per successfully scraped job, making it affordable at any scale.
 
 ### Use Cases
 
@@ -47,7 +49,7 @@ Deduplication by LinkedIn job ID ensures clean, unique results. A pay-per-event 
 
 | Unit        | Price    |
 |-------------|----------|
-| Per job     | $0.003   |
+| Per job     | $0.0015  |
 
 Charges are incurred only when a job record is successfully scraped and pushed to the dataset. There are no upfront fees, no monthly minimums, and no hidden costs.
 
@@ -60,9 +62,17 @@ Charges are incurred only when a job record is successfully scraped and pushed t
 | workplaceType      | string[]   | No       | []             | Filter: remote, hybrid, onsite                   |
 | jobType            | string[]   | No       | []             | Filter: full-time, part-time, contract, etc.     |
 | experienceLevel    | string[]   | No       | []             | Filter: entry, mid-senior, director, etc.        |
-| maxResults         | number     | No       | 500            | Maximum total jobs across all searches            |
-| maxJobsPerSearch   | number     | No       | 50             | Max jobs per keyword + location combination       |
+| maxResults         | number     | No       | 50             | Maximum total jobs across all searches            |
+| maxJobsPerSearch   | number     | No       | 25             | Max jobs per keyword + location combination       |
 | proxyConfiguration | object     | No       | RESIDENTIAL    | Apify proxy settings                             |
+
+## How to Scrape LinkedIn Jobs (Step by Step)
+
+1. Click **Try for free** / **Run**.
+2. Enter your job **keywords** (titles or skills) and **locations** (city, region, or country).
+3. Optionally filter by workplace type, job type, and experience level.
+4. Set **Max Results** and **Max Jobs Per Search** — start small to test.
+5. Run, then export results as JSON, CSV, Excel, or HTML, or pull them via the Apify API.
 
 ## Technical Details
 
