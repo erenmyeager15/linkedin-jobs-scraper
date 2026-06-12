@@ -20,7 +20,7 @@
       }
     }
   },
-  "categories": ["JOBS", "BUSINESS", "LEAD_GENERATION"],
+  "categories": ["JOBS", "BUSINESS"],
   "minMemoryMbytes": 2048,
   "maxMemoryMbytes": 8192,
   "defaultRunOptions": {

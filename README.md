@@ -82,3 +82,9 @@ Charges are incurred only when a job record is successfully scraped and pushed t
 - **Anti-bot:** Session pool (max 20 uses), random delays (1500-4000ms), 3 retries with retryOnBlocked, cookie acceptance
 - **Pagination:** Infinite scroll with automatic load-more detection
 - **Deduplication:** By LinkedIn job ID across all searches
+
+## Responsible Use
+
+This Actor is intended for lawful collection of publicly available information only. Users are responsible for ensuring their use complies with the source website's terms, robots.txt, applicable privacy laws, including India's DPDP Act, and all local regulations.
+
+Do not use this Actor to collect, store, sell, or misuse personal data without a lawful basis. The Actor author is not responsible for misuse by end users.
