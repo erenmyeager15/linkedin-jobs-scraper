@@ -3,6 +3,8 @@ import { PlaywrightCrawler, log } from 'crawlee';
 import { router } from './routes.js';
 import type { ActorInput } from './types.js';
 
+const MAINTENANCE_MESSAGE = 'Under maintenance. This Actor is temporarily unavailable and no data was collected.';
+
 const WORKPLACE_MAP: Record<string, string> = {
   remote: '2',
   hybrid: '3',
@@ -82,6 +84,10 @@ function buildSearchRequests(input: ActorInput) {
 }
 
 await Actor.init();
+
+await Actor.setStatusMessage(MAINTENANCE_MESSAGE);
+log.warning(MAINTENANCE_MESSAGE);
+await Actor.exit();
 
 const input = await Actor.getInput<ActorInput>();
 if (!input) throw new Error('Input is required');
