@@ -1,5 +1,7 @@
 # LinkedIn Jobs Scraper — Extract Job Listings at Scale
 
+> **Unofficial Actor.** This tool is independent and is **not affiliated with, endorsed by, or sponsored by LinkedIn**. It collects only publicly available job listings and never uses LinkedIn credentials, cookies, or private APIs.
+
 ## Description
 
 Scrape LinkedIn job listings at scale and turn them into a clean, deduplicated dataset — job titles, companies, salaries, required skills, workplace type, experience level, applicant counts, and more. This LinkedIn Jobs scraper runs from simple keywords and locations with no login and no API key. Export to JSON, CSV, Excel, or HTML, or pull via the Apify API.
@@ -86,10 +88,10 @@ LinkedIn does not publish every field on every listing. Fields that a listing do
 - **Runtime:** Node.js 20 + Playwright (Chrome)
 - **SDK:** Apify SDK v3 + Crawlee v3
 - **Proxy:** Residential proxy rotation (required for LinkedIn)
-- **Anti-bot:** Session pool (max 20 uses), random delays (1500-4000ms), 3 retries with retryOnBlocked, authwall detection with session rotation
+- **Anti-bot:** Session pool (max 20 uses), randomised delays, 3 retries with retryOnBlocked, authwall detection with session rotation
 - **Pagination:** Offset paging over LinkedIn's public guest job endpoints, bounded by your limits
 - **Deduplication:** By LinkedIn job ID across all searches
-- **Efficiency:** Images, media, and fonts are blocked, since job data comes from markup only
+- **Efficiency:** Only the HTML document is fetched. Scripts, stylesheets, images, media, and fonts are all blocked, because every field comes from server-rendered markup
 
 ## Responsible Use
 

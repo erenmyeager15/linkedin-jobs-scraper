@@ -5,7 +5,12 @@
   "description": "Scrape public LinkedIn job listings by keyword and location: title, company, location, workplace type, job type, seniority, posted date, salary when shown, skills, and apply URL. No login or cookies required.",
   "version": "1.0",
   "dockerfile": "Dockerfile",
+  "readme": "../README.md",
   "input": "../INPUT_SCHEMA.json",
+  "exampleRunInput": {
+    "contentType": "application/json; charset=utf-8",
+    "body": "{\"keywords\":[\"software engineer\"],\"locations\":[\"London, UK\"],\"maxResults\":10,\"maxJobsPerSearch\":10,\"proxyConfiguration\":{\"useApifyProxy\":true,\"apifyProxyGroups\":[\"RESIDENTIAL\"]}}"
+  },
   "pricingInfo": {
     "pricingModel": "PAY_PER_EVENT",
     "pricingPerEvent": {
