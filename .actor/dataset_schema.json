@@ -5,6 +5,7 @@
     "properties": {
       "jobTitle": { "type": ["string", "null"], "title": "Job Title", "example": "Senior Software Engineer" },
       "companyName": { "type": ["string", "null"], "title": "Company", "example": "Acme Corp" },
+      "companyLinkedInUrl": { "type": ["string", "null"], "title": "Company LinkedIn URL", "example": "https://www.linkedin.com/company/acme/" },
       "jobLocation": { "type": ["string", "null"], "title": "Location", "example": "London, UK" },
       "workplaceType": { "type": ["string", "null"], "title": "Workplace", "example": "Hybrid" },
       "jobType": { "type": ["string", "null"], "title": "Job Type", "example": "Full-time" },
@@ -12,6 +13,7 @@
       "salaryRange": { "type": ["string", "null"], "title": "Salary", "example": "$120,000 - $150,000" },
       "postedDate": { "type": ["string", "null"], "title": "Posted", "example": "2 days ago" },
       "numberOfApplicants": { "type": ["integer", "null"], "title": "Applicants", "example": 47 },
+      "jobDescription": { "type": ["string", "null"], "title": "Job Description", "example": "Build and maintain production software systems." },
       "requiredSkills": { "type": "array", "title": "Skills", "items": { "type": "string" }, "example": ["Python", "AWS"] },
       "easyApply": { "type": "boolean", "title": "Easy Apply", "example": true },
       "companyIndustry": { "type": ["string", "null"], "title": "Industry", "example": "Software Development" },

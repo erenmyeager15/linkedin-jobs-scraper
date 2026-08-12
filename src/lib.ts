@@ -245,9 +245,18 @@ export function releaseSave(budget: RunBudget): void {
   }
 }
 
-export function registerCharge(budget: RunBudget, limitReached: boolean): void {
-  budget.charged += 1;
+export function registerCharge(
+  budget: RunBudget,
+  chargedCount: number,
+  limitReached: boolean,
+): void {
+  if (chargedCount > 0) budget.charged += chargedCount;
   if (limitReached) budget.stopReason = 'charge-limit';
+}
+
+/** Prefer richer detail-page data, but retain fields already present on search cards. */
+export function detailOrCard<T>(detailValue: T | null | undefined, cardValue: T | null | undefined): T | null {
+  return detailValue ?? cardValue ?? null;
 }
 
 export function isFinished(budget: RunBudget): boolean {

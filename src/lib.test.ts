@@ -7,6 +7,7 @@ import {
   canSaveMore,
   createBudget,
   detailAllowance,
+  detailOrCard,
   hasUsableJobData,
   inferSkills,
   isBlockedStatus,
@@ -188,14 +189,31 @@ test('a failed save returns its reserved slot', () => {
 test('a reached spending limit stops the run immediately', () => {
   const budget = createBudget({ maxResults: 100, maxJobsPerSearch: 100 });
 
-  registerCharge(budget, false);
+  registerCharge(budget, 1, false);
   assert.equal(canSaveMore(budget), true);
 
-  registerCharge(budget, true);
+  registerCharge(budget, 1, true);
   assert.equal(budget.stopReason, 'charge-limit');
   assert.equal(canSaveMore(budget), false);
   // No further save may be reserved once the spending limit is reached.
   assert.equal(reserveSave(budget), false);
+});
+
+test('only successful charges increment the charged count', () => {
+  const budget = createBudget({ maxResults: 10, maxJobsPerSearch: 10 });
+
+  registerCharge(budget, 0, false);
+  assert.equal(budget.charged, 0);
+
+  registerCharge(budget, 1, false);
+  assert.equal(budget.charged, 1);
+});
+
+test('detail values win while search-card values fill missing fields', () => {
+  assert.equal(detailOrCard('detail', 'card'), 'detail');
+  assert.equal(detailOrCard(null, 'card'), 'card');
+  assert.equal(detailOrCard(undefined, 'card'), 'card');
+  assert.equal(detailOrCard(null, null), null);
 });
 
 test('block markers stay narrow enough to avoid discarding real listings', () => {

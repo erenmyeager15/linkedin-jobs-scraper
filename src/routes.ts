@@ -5,6 +5,7 @@ import {
   buildDetailUrl,
   canSaveMore,
   detailAllowance,
+  detailOrCard,
   hasUsableJobData,
   inferSkills,
   isBlockedStatus,
@@ -169,10 +170,8 @@ router.addHandler('search', async ({ page, request, response, session, log, craw
 });
 
 router.addHandler('job-detail', async ({ page, request, response, session, log, pushData, crawler }) => {
-  const { jobId, keyword, location } = request.userData as Record<
-    string,
-    unknown
-  >;
+  const card = request.userData as Record<string, unknown>;
+  const { jobId, keyword, location } = card;
   const budget = getBudget();
   const key = searchKey(keyword as string, location as string);
 
@@ -405,19 +404,22 @@ router.addHandler('job-detail', async ({ page, request, response, session, log, 
 
   const record: JobRecord = {
     jobTitle: detail.jobTitle ?? null,
-    companyName: detail.companyName ?? null,
-    companyLinkedInUrl: detail.companyLinkedInUrl ?? null,
-    jobLocation: detail.jobLocation ?? null,
+    companyName: detailOrCard(detail.companyName, card.companyName as string | null),
+    companyLinkedInUrl: detailOrCard(
+      detail.companyLinkedInUrl,
+      card.companyLinkedInUrl as string | null,
+    ),
+    jobLocation: detailOrCard(detail.jobLocation, card.jobLocation as string | null),
     workplaceType: detail.workplaceType ?? null,
     jobType: detail.jobType ?? null,
     experienceLevel: detail.experienceLevel ?? null,
-    postedDate: detail.postedDate ?? null,
+    postedDate: detailOrCard(detail.postedDate, card.postedDate as string | null),
     numberOfApplicants: detail.numberOfApplicants ?? null,
     jobDescription: detail.jobDescription ?? null,
     requiredSkills: detail.requiredSkills?.length
       ? detail.requiredSkills
       : inferSkills(detail.jobDescription ?? null),
-    salaryRange: detail.salaryRange ?? null,
+    salaryRange: detailOrCard(detail.salaryRange, card.salaryRange as string | null),
     applyUrl: (request.userData.applyUrl as string) ?? null,
     jobId: jobId as string,
     companySize: detail.companySize ?? null,
@@ -457,7 +459,11 @@ router.addHandler('job-detail', async ({ page, request, response, session, log, 
 
   try {
     const chargeResult = await Actor.charge({ eventName: 'job-scraped' });
-    registerCharge(budget, Boolean(chargeResult?.eventChargeLimitReached));
+    registerCharge(
+      budget,
+      chargeResult?.chargedCount ?? 0,
+      Boolean(chargeResult?.eventChargeLimitReached),
+    );
   } catch (error) {
     log.warning(`Charging job-scraped failed for ${jobId}: ${(error as Error).message}`);
   }
