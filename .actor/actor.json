@@ -28,7 +28,7 @@
     }
   },
   "categories": ["JOBS", "BUSINESS"],
-  "minMemoryMbytes": 2048,
+  "minMemoryMbytes": 1024,
   "maxMemoryMbytes": 4096,
   "defaultRunOptions": {
     "memoryMbytes": 2048,
