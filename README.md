@@ -8,7 +8,7 @@ Scrape LinkedIn Jobs at scale with this production-ready Apify Actor. Supply job
 
 Built on Crawlee's PlaywrightCrawler with residential proxy rotation, session pool management, and intelligent anti-bot countermeasures, this Actor reliably scrapes LinkedIn without getting blocked. Each search supports pagination up to 500 job listings, and multiple keyword + location combinations can be run in a single execution.
 
-Deduplication by LinkedIn job ID ensures clean, unique results. A pay-per-event model charges $0.0015 per successfully scraped job, making it affordable at any scale.
+Deduplication by LinkedIn job ID ensures clean, unique results. A pay-per-event model charges $1.00 per 1,000 successfully scraped jobs, making it affordable at any scale.
 
 ### Use Cases
 
@@ -47,9 +47,10 @@ Deduplication by LinkedIn job ID ensures clean, unique results. A pay-per-event 
 
 ## Pricing
 
-| Unit        | Price    |
-|-------------|----------|
-| Per job     | $0.0015  |
+| Unit                | Price     |
+|---------------------|-----------|
+| Per 1,000 jobs      | $1.00     |
+| Actor start         | $0.00005 per GB of memory |
 
 Charges are incurred only when a job record is successfully scraped and pushed to the dataset. There are no upfront fees, no monthly minimums, and no hidden costs.
 

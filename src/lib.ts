@@ -38,14 +38,16 @@ export const GUEST_SEARCH_ENDPOINT =
 export const GUEST_DETAIL_ENDPOINT = 'https://www.linkedin.com/jobs-guest/jobs/api/jobPosting';
 
 /**
- * Stylesheets are deliberately NOT blocked: Playwright's innerText depends on layout,
- * so removing CSS would expose hidden sign-in boilerplate and corrupt block detection.
+ * Only the HTML document is fetched. LinkedIn's scripts and stylesheets are megabytes of
+ * residential-proxy bandwidth per page and contribute nothing: every field comes from
+ * server-rendered markup. Block detection uses unambiguous phrases, so losing
+ * CSS-driven visibility cannot cause a false positive.
  */
-export const BLOCKED_RESOURCE_PATTERNS = [
-  '.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.ico', '.avif',
-  '.woff', '.woff2', '.ttf', '.otf', '.eot',
-  '.mp4', '.webm', '.mp3', '.pdf', '.zip',
-];
+export const ALLOWED_RESOURCE_TYPES = ['document'];
+
+export function shouldAllowResource(resourceType: string): boolean {
+  return ALLOWED_RESOURCE_TYPES.includes(resourceType);
+}
 
 export interface RunLimits {
   maxResults: number;

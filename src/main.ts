@@ -2,13 +2,13 @@ import { Actor, log } from 'apify';
 import { PlaywrightCrawler } from 'crawlee';
 import { router } from './routes.js';
 import {
-  BLOCKED_RESOURCE_PATTERNS,
   buildSearchRequests,
   createBudget,
   maxRequestsForRun,
   releaseEnqueued,
   resolveLimits,
   searchKey,
+  shouldAllowResource,
 } from './lib.js';
 import { setBudget } from './state.js';
 import type { ActorInput } from './types.js';
@@ -63,14 +63,19 @@ const crawler = new PlaywrightCrawler({
   // Sized for real offset paging so Crawlee never silently drops queued requests.
   maxRequestsPerCrawl: maxRequestsForRun(limits, searchRequests.length),
   preNavigationHooks: [
-    async ({ blockRequests }) => {
-      // Images, media and fonts are pure residential-proxy bandwidth for markup-only
-      // extraction. Stylesheets are kept so text visibility stays accurate.
-      await blockRequests({ urlPatterns: BLOCKED_RESOURCE_PATTERNS })
-        .catch(() => { /* best effort */ });
+    async ({ page }) => {
+      // Fetch only the HTML document. Scripts and stylesheets are megabytes of
+      // residential bandwidth per page and hold none of the extracted data.
+      await page.route('**/*', async (route) => {
+        if (shouldAllowResource(route.request().resourceType())) {
+          await route.continue().catch(() => { /* navigation already settled */ });
+        } else {
+          await route.abort().catch(() => { /* navigation already settled */ });
+        }
+      }).catch(() => { /* best effort */ });
     },
     async () => {
-      await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 2500));
+      await new Promise((resolve) => setTimeout(resolve, 600 + Math.random() * 900));
     },
   ],
   failedRequestHandler: async ({ request, session, log: ctxLog }) => {

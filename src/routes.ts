@@ -189,8 +189,6 @@ router.addHandler('job-detail', async ({ page, request, response, session, log, 
 
   log.info(`Detail: ${jobId}`);
 
-  await page.waitForTimeout(1000 + Math.random() * 1500);
-
   const detail = await page.evaluate((blockMarkers: string[]) => {
     const text = (sel: string): string | null => {
       const el = document.querySelector(sel);
