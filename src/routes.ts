@@ -1,22 +1,56 @@
 import { Router, type PlaywrightCrawlingContext } from 'crawlee';
 import { Actor } from 'apify';
+import {
+  BLOCK_TEXT_MARKERS,
+  buildDetailUrl,
+  canSaveMore,
+  detailAllowance,
+  hasUsableJobData,
+  inferSkills,
+  isBlockedStatus,
+  isBlockedUrl,
+  isFinished,
+  registerCharge,
+  releaseEnqueued,
+  releaseSave,
+  reserveJob,
+  reserveSave,
+  searchKey,
+  type SearchUserData,
+} from './lib.js';
+import { getBudget } from './state.js';
 import type { JobRecord } from './types.js';
 
 export const router = Router.create<PlaywrightCrawlingContext>();
 
-router.addHandler('search', async ({ page, request, log, crawler }) => {
-  const { keyword, location, maxResults, start } = request.userData as {
-    keyword: string;
-    location: string;
-    maxResults: number;
-    start: number;
-  };
+router.addHandler('search', async ({ page, request, response, session, log, crawler }) => {
+  const { keyword, location, start } = request.userData as SearchUserData;
+  const budget = getBudget();
+  const key = searchKey(keyword, location);
 
-  log.info(`Search: "${keyword}" in "${location}" — start ${start}, max ${maxResults}`);
+  if (isFinished(budget)) {
+    log.info('Result budget reached; skipping remaining search pages.');
+    return;
+  }
+
+  const status = response?.status();
+  if (isBlockedStatus(status)) {
+    session?.retire();
+    throw new Error(`LinkedIn returned HTTP ${status} for the guest job search.`);
+  }
+
+  const allowance = detailAllowance(budget, key);
+  if (allowance <= 0) {
+    log.info(`Per-search limit reached for "${keyword}" in "${location}".`);
+    return;
+  }
+
+  log.info(`Search: "${keyword}" in "${location}" — start ${start}, allowance ${allowance}`);
 
   // The guest endpoint returns a fragment of <li> job cards.
-  const searchResults = await page.evaluate(() => {
+  const scan = await page.evaluate((blockMarkers: string[]) => {
     const cards = document.querySelectorAll<HTMLElement>('li');
+    let jobCardCount = 0;
     const results: Array<{
       jobId: string;
       jobTitle: string | null;
@@ -30,10 +64,15 @@ router.addHandler('search', async ({ page, request, log, crawler }) => {
 
     for (const card of cards) {
       try {
-        const base = card.querySelector('.base-card, .base-search-card, [data-entity-urn]') || card;
+        const cardRoot = card.querySelector('.base-card, .base-search-card, [data-entity-urn]');
+        const base = cardRoot || card;
         const urn = base.getAttribute('data-entity-urn') || '';
         const link = card.querySelector<HTMLAnchorElement>('a.base-card__full-link, a[href*="/jobs/view/"]');
         const href = link?.getAttribute('href') || '';
+
+        // Count only real job cards, so the paging offset cannot jump past listings.
+        if (cardRoot || href) jobCardCount += 1;
+
         let jobId = '';
         const urnM = urn.match(/jobPosting:(\d+)/);
         const hrefM = href.match(/\/jobs\/view\/(?:[^/]*-)?(\d+)/) || href.match(/(\d{6,})/);
@@ -70,58 +109,89 @@ router.addHandler('search', async ({ page, request, log, crawler }) => {
       }
     }
 
-    return results;
+    const pageText = (document.body?.innerText || '').toLowerCase();
+
+    return {
+      results,
+      cardCount: jobCardCount,
+      blocked: blockMarkers.some((marker) => pageText.includes(marker)),
+    };
+  }, BLOCK_TEXT_MARKERS);
+
+  // Blocking is checked before anything else is trusted, so a wall can never be
+  // mistaken for an exhausted search.
+  if (scan.blocked || isBlockedUrl(page.url())) {
+    session?.retire();
+    throw new Error('LinkedIn blocked the guest job search (authwall or verification).');
+  }
+
+  if (scan.results.length === 0) {
+    log.info('No job cards returned; this search is exhausted.');
+    return;
+  }
+
+  log.info(`Scraped ${scan.results.length} job cards (start ${start})`);
+
+  // Reserve a budget slot per job id. Ids already queued in this run are skipped, so
+  // overlapping searches never consume the budget twice for one job.
+  const unique = scan.results.filter((job) => reserveJob(budget, key, job.jobId));
+
+  if (unique.length > 0) {
+    await crawler.addRequests(
+      unique.map((job) => ({
+        url: buildDetailUrl(job.jobId),
+        label: 'job-detail',
+        uniqueKey: `detail-${job.jobId}`,
+        userData: { ...job, keyword, location },
+      })),
+    );
+  }
+
+  log.info(`Enqueued ${unique.length} detail pages`, {
+    queuedTotal: budget.enqueued,
+    maxResults: budget.maxResults,
   });
 
-  log.info(`Scraped ${searchResults.length} job cards (start ${start})`);
-
-  // Deduplicate, then cap to the remaining allowance for this search so we never
-  // scrape/charge beyond the user's requested maxJobsPerSearch.
-  const seen = new Set<string>();
-  const deduped = searchResults.filter((j) => {
-    if (!j.jobId || seen.has(j.jobId)) return false;
-    seen.add(j.jobId);
-    return true;
-  });
-  const remaining = Math.max(0, maxResults - start);
-  const unique = deduped.slice(0, remaining);
-
-  await crawler.addRequests(
-    unique.map((job) => ({
-      url: `https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${job.jobId}`,
-      label: 'job-detail',
-      uniqueKey: `detail-${job.jobId}`,
-      userData: { ...job, keyword, location },
-    })),
-  );
-
-  log.info(`Enqueued ${unique.length} detail pages`);
-
-  // Paginate: the guest endpoint returns ~10 cards per call. Continue until we hit
-  // the per-search cap or a page returns nothing.
-  const nextStart = start + (searchResults.length || 0);
-  if (searchResults.length > 0 && nextStart < maxResults) {
-    const u = new URL(request.url);
-    u.searchParams.set('start', String(nextStart));
+  // Paginate by the offset LinkedIn actually served, so cards missing an id cannot
+  // shift the window and silently skip jobs.
+  const step = Math.max(scan.cardCount, scan.results.length);
+  if (step > 0 && detailAllowance(budget, key) > 0) {
+    const nextStart = start + step;
+    const nextUrl = new URL(request.url);
+    nextUrl.searchParams.set('start', String(nextStart));
     await crawler.addRequests([{
-      url: u.toString(),
+      url: nextUrl.toString(),
       label: 'search',
-      uniqueKey: `search-${keyword}-${location}-${nextStart}`,
-      userData: { keyword, location, maxResults, start: nextStart },
+      uniqueKey: `search-${key}-${nextStart}`,
+      userData: { keyword, location, start: nextStart } satisfies SearchUserData,
     }]);
   }
 });
 
-router.addHandler('job-detail', async ({ page, request, log, pushData }) => {
+router.addHandler('job-detail', async ({ page, request, response, session, log, pushData, crawler }) => {
   const { jobId, keyword, location } = request.userData as Record<
     string,
     unknown
   >;
+  const budget = getBudget();
+  const key = searchKey(keyword as string, location as string);
+
+  if (!canSaveMore(budget)) {
+    log.info('Result budget reached; skipping job detail.');
+    return;
+  }
+
+  const status = response?.status();
+  if (isBlockedStatus(status)) {
+    session?.retire();
+    throw new Error(`LinkedIn returned HTTP ${status} for job ${jobId}.`);
+  }
+
   log.info(`Detail: ${jobId}`);
 
   await page.waitForTimeout(1000 + Math.random() * 1500);
 
-  const detail = await page.evaluate(() => {
+  const detail = await page.evaluate((blockMarkers: string[]) => {
     const text = (sel: string): string | null => {
       const el = document.querySelector(sel);
       return el?.textContent?.trim() || null;
@@ -295,24 +365,8 @@ router.addHandler('job-detail', async ({ page, request, log, pushData }) => {
         }
       }
     }
-    if (requiredSkills.length === 0 && jobDescription) {
-      const common = [
-        'JavaScript', 'Python', 'Java', 'TypeScript', 'React', 'Node.js',
-        'SQL', 'AWS', 'Docker', 'Kubernetes', 'Go', 'Rust', 'C++', 'C#',
-        '.NET', 'PHP', 'Ruby', 'Swift', 'Kotlin', 'Scala', 'R', 'MATLAB',
-        'Tableau', 'Power BI', 'TensorFlow', 'PyTorch', 'Git', 'Linux',
-        'Agile', 'Scrum', 'Machine Learning', 'Data Science', 'DevOps',
-        'CI/CD', 'REST', 'GraphQL', 'MongoDB', 'PostgreSQL', 'Redis',
-        'Kafka', 'Spark', 'Hadoop', 'Terraform', 'Ansible', 'Jenkins',
-        'Azure', 'GCP', 'Flutter', 'Dart', 'Vue', 'Angular', 'Sass',
-        'Figma', 'Sketch', 'Adobe XD',
-      ];
-      for (const skill of common) {
-        if (jobDescription.includes(skill)) {
-          requiredSkills.push(skill);
-        }
-      }
-    }
+    // When LinkedIn exposes no skills list, inference happens outside the browser
+    // using whole-token matching so "Java" is not reported for "JavaScript".
 
     let companySize: string | null = null;
     let companyIndustry: string | null = null;
@@ -347,8 +401,9 @@ router.addHandler('job-detail', async ({ page, request, log, pushData }) => {
       companySize,
       companyIndustry,
       easyApply,
+      blocked: blockMarkers.some((marker) => pageText.toLowerCase().includes(marker)),
     };
-  });
+  }, BLOCK_TEXT_MARKERS);
 
   const record: JobRecord = {
     jobTitle: detail.jobTitle ?? null,
@@ -361,7 +416,9 @@ router.addHandler('job-detail', async ({ page, request, log, pushData }) => {
     postedDate: detail.postedDate ?? null,
     numberOfApplicants: detail.numberOfApplicants ?? null,
     jobDescription: detail.jobDescription ?? null,
-    requiredSkills: detail.requiredSkills ?? [],
+    requiredSkills: detail.requiredSkills?.length
+      ? detail.requiredSkills
+      : inferSkills(detail.jobDescription ?? null),
     salaryRange: detail.salaryRange ?? null,
     applyUrl: (request.userData.applyUrl as string) ?? null,
     jobId: jobId as string,
@@ -373,8 +430,46 @@ router.addHandler('job-detail', async ({ page, request, log, pushData }) => {
     scrapedAt: new Date().toISOString(),
   };
 
-  await pushData(record);
-  await Actor.charge({ eventName: 'job-scraped' });
+  // Blocking is judged before the record is trusted, so a wall can never be saved or
+  // charged even when it happens to fill in enough fields to look real.
+  if (detail.blocked || isBlockedUrl(page.url())) {
+    session?.retire();
+    throw new Error(`LinkedIn blocked the job detail page for ${jobId}.`);
+  }
 
-  log.info(`Pushed job ${jobId}`);
+  if (!hasUsableJobData(record)) {
+    releaseEnqueued(budget, key);
+    log.warning(`No usable job data for ${jobId}; not saving and not charging.`);
+    return;
+  }
+
+  // The slot is reserved before any await, so concurrent workers cannot overshoot
+  // maxResults or keep charging after the spending limit is reached.
+  if (!reserveSave(budget)) {
+    log.info('Result budget reached while parsing; discarding extra job.');
+    return;
+  }
+
+  try {
+    await pushData(record);
+  } catch (error) {
+    releaseSave(budget);
+    throw error;
+  }
+
+  try {
+    const chargeResult = await Actor.charge({ eventName: 'job-scraped' });
+    registerCharge(budget, Boolean(chargeResult?.eventChargeLimitReached));
+  } catch (error) {
+    log.warning(`Charging job-scraped failed for ${jobId}: ${(error as Error).message}`);
+  }
+
+  log.info(`Pushed job ${jobId}`, { saved: budget.pushed, maxResults: budget.maxResults });
+
+  // Stop paying for navigation once the budget or the spending limit is exhausted.
+  if (isFinished(budget)) {
+    const reason = budget.stopReason ?? 'max-results';
+    log.info(`Stopping crawl: ${reason}.`);
+    crawler.stop(`Reached ${reason}`);
+  }
 });

@@ -1,109 +1,53 @@
-import { Actor } from 'apify';
-import { PlaywrightCrawler, log } from 'crawlee';
+import { Actor, log } from 'apify';
+import { PlaywrightCrawler } from 'crawlee';
 import { router } from './routes.js';
+import {
+  BLOCKED_RESOURCE_PATTERNS,
+  buildSearchRequests,
+  createBudget,
+  maxRequestsForRun,
+  releaseEnqueued,
+  resolveLimits,
+  searchKey,
+} from './lib.js';
+import { setBudget } from './state.js';
 import type { ActorInput } from './types.js';
-
-const MAINTENANCE_MESSAGE = 'Under maintenance. This Actor is temporarily unavailable and no data was collected.';
-
-const WORKPLACE_MAP: Record<string, string> = {
-  remote: '2',
-  hybrid: '3',
-  onsite: '1',
-};
-
-const JOB_TYPE_MAP: Record<string, string> = {
-  'full-time': 'F',
-  'part-time': 'P',
-  contract: 'C',
-  internship: 'I',
-  temporary: 'T',
-  volunteer: 'V',
-};
-
-const EXP_LEVEL_MAP: Record<string, string> = {
-  internship: '1',
-  entry: '2',
-  associate: '3',
-  'mid-senior': '4',
-  director: '5',
-  executive: '6',
-};
-
-function buildSearchRequests(input: ActorInput) {
-  const maxPerSearch = input.maxJobsPerSearch ?? 50;
-
-  const requests: Array<{
-    url: string;
-    label: string;
-    userData: Record<string, unknown>;
-  }> = [];
-
-  for (const keyword of input.keywords) {
-    for (const location of input.locations) {
-      const params = new URLSearchParams();
-      params.set('keywords', keyword);
-      params.set('location', location);
-      params.set('start', '0');
-
-      if (input.workplaceType?.length) {
-        const codes = input.workplaceType
-          .map((w) => WORKPLACE_MAP[w.toLowerCase()])
-          .filter(Boolean);
-        if (codes.length) params.set('f_WT', codes.join(','));
-      }
-
-      if (input.jobType?.length) {
-        const codes = input.jobType
-          .map((j) => JOB_TYPE_MAP[j.toLowerCase()])
-          .filter(Boolean);
-        if (codes.length) params.set('f_JT', codes.join(','));
-      }
-
-      if (input.experienceLevel?.length) {
-        const codes = input.experienceLevel
-          .map((e) => EXP_LEVEL_MAP[e.toLowerCase()])
-          .filter(Boolean);
-        if (codes.length) params.set('f_E', codes.join(','));
-      }
-
-      // LinkedIn's public guest endpoint returns job-card HTML without login.
-      requests.push({
-        url: `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?${params.toString()}`,
-        label: 'search',
-        userData: {
-          keyword,
-          location,
-          maxResults: maxPerSearch,
-          start: 0,
-        },
-      });
-    }
-  }
-
-  return requests;
-}
 
 await Actor.init();
 
-await Actor.setStatusMessage(MAINTENANCE_MESSAGE);
-log.warning(MAINTENANCE_MESSAGE);
-await Actor.exit();
-
 const input = await Actor.getInput<ActorInput>();
-if (!input) throw new Error('Input is required');
+if (!input) throw new Error('Input is required.');
+if (!input.keywords?.length) throw new Error('At least one job keyword is required.');
+if (!input.locations?.length) throw new Error('At least one location is required.');
 
-const { maxResults = 500 } = input;
+const limits = resolveLimits(input);
+const budget = createBudget(limits);
+setBudget(budget);
 
-const proxyConfig = await Actor.createProxyConfiguration({
-  ...(input.proxyConfiguration ?? {
+const proxyConfiguration = await Actor.createProxyConfiguration(
+  input.proxyConfiguration ?? {
     useApifyProxy: true,
     apifyProxyGroups: ['RESIDENTIAL'],
-  }),
+  },
+);
+
+if (!proxyConfiguration) {
+  log.warning(
+    'Running without Apify Proxy. LinkedIn blocks datacenter IPs, so results are likely to be empty.',
+  );
+}
+
+const searchRequests = buildSearchRequests(input, limits);
+
+log.info('Starting LinkedIn jobs scrape', {
+  searches: searchRequests.length,
+  maxResults: limits.maxResults,
+  maxJobsPerSearch: limits.maxJobsPerSearch,
 });
 
 const crawler = new PlaywrightCrawler({
   requestHandler: router,
-  proxyConfiguration: proxyConfig,
+  proxyConfiguration,
   useSessionPool: true,
   sessionPoolOptions: {
     maxPoolSize: 20,
@@ -115,40 +59,60 @@ const crawler = new PlaywrightCrawler({
   retryOnBlocked: true,
   requestHandlerTimeoutSecs: 120,
   navigationTimeoutSecs: 60,
-  maxRequestsPerCrawl: maxResults * 2 + input.keywords.length * input.locations.length,
+  maxConcurrency: 5,
+  // Sized for real offset paging so Crawlee never silently drops queued requests.
+  maxRequestsPerCrawl: maxRequestsForRun(limits, searchRequests.length),
   preNavigationHooks: [
-    async ({ page }) => {
-      const delay = 1500 + Math.random() * 2500;
-      await new Promise((r) => setTimeout(r, delay));
+    async ({ blockRequests }) => {
+      // Images, media and fonts are pure residential-proxy bandwidth for markup-only
+      // extraction. Stylesheets are kept so text visibility stays accurate.
+      await blockRequests({ urlPatterns: BLOCKED_RESOURCE_PATTERNS })
+        .catch(() => { /* best effort */ });
+    },
+    async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 2500));
     },
   ],
-  postNavigationHooks: [
-    async ({ page }) => {
-      // Guest API fragments have no cookie banner; keep this fast and best-effort.
-      try {
-        const btn = await page.waitForSelector(
-          'button:has-text("Accept all"), button:has-text("Accept")',
-          { timeout: 1500 }
-        );
-        if (btn) {
-          await btn.click();
-          await page.waitForTimeout(500);
-        }
-      } catch {
-        /* cookie banner may not appear */
-      }
-    },
-  ],
-  failedRequestHandler: async ({ request, log }) => {
-    log.error(`Request failed after retries: ${request.url}`, {
+  failedRequestHandler: async ({ request, session, log: ctxLog }) => {
+    session?.retire();
+
+    // A detail page that never became a record must return its budget slot, so a
+    // permanent failure does not quietly reduce the number of jobs delivered.
+    if (request.label === 'job-detail') {
+      const { keyword, location } = request.userData as { keyword?: string; location?: string };
+      if (keyword && location) releaseEnqueued(budget, searchKey(keyword, location));
+    }
+
+    ctxLog.error(`Request failed after retries: ${request.url}`, {
       errors: request.errorMessages,
     });
   },
 });
 
-const initialRequests = buildSearchRequests(input);
-await crawler.run(initialRequests);
+await crawler.run(searchRequests);
 
-log.info('Scraping complete.');
+log.info('Scraping complete.', {
+  jobsSaved: budget.pushed,
+  jobsCharged: budget.charged,
+  stopReason: budget.stopReason ?? 'search-exhausted',
+});
+
+if (budget.charged < budget.pushed) {
+  log.warning(
+    `${budget.pushed - budget.charged} job(s) were saved without a successful charge.`,
+  );
+}
+
+if (budget.stopReason === 'charge-limit') {
+  await Actor.setStatusMessage(
+    `Stopped at the run's spending limit after saving ${budget.pushed} jobs.`,
+  );
+} else if (budget.pushed === 0) {
+  await Actor.setStatusMessage(
+    'No job listings matched this search. Try broader keywords or locations, or enable Apify Proxy (residential).',
+  );
+} else {
+  await Actor.setStatusMessage(`Saved ${budget.pushed} LinkedIn job listings.`);
+}
 
 await Actor.exit();

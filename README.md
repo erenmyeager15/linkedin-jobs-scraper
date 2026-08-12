@@ -32,12 +32,12 @@ Deduplication by LinkedIn job ID ensures clean, unique results. A pay-per-event 
   "postedDate": "Posted 2 weeks ago",
   "numberOfApplicants": 47,
   "jobDescription": "Google's software engineers develop the next-generation technologies...",
-  "requiredSkills": ["JavaScript", "Python", "Go", "Distributed Systems"],
+  "requiredSkills": ["JavaScript", "Python", "Kubernetes"],
   "salaryRange": "$120,000 - $180,000",
   "applyUrl": "https://www.linkedin.com/jobs/view/123456789/",
   "jobId": "123456789",
-  "companySize": "10,001+ employees",
-  "companyIndustry": "Technology, Information and Internet",
+  "companySize": null,
+  "companyIndustry": null,
   "easyApply": true,
   "keywordUsed": "software engineer",
   "locationUsed": "London, UK",
@@ -52,6 +52,12 @@ Deduplication by LinkedIn job ID ensures clean, unique results. A pay-per-event 
 | Per job     | $0.0015  |
 
 Charges are incurred only when a job record is successfully scraped and pushed to the dataset. There are no upfront fees, no monthly minimums, and no hidden costs.
+
+A job is saved and charged only when it carries a real job title plus a company or a description. Blocked pages and empty results are never saved and never charged, and the run stops as soon as your `maxResults` or your spending limit is reached.
+
+### Field Availability
+
+LinkedIn does not publish every field on every listing. Fields that a listing does not expose are returned as `null` rather than guessed, so `salaryRange`, `numberOfApplicants`, `companySize`, and `companyIndustry` are frequently `null`. When LinkedIn shows no explicit skills list, `requiredSkills` is inferred from the job description using whole-word matching.
 
 ## Input Parameters
 
@@ -79,9 +85,10 @@ Charges are incurred only when a job record is successfully scraped and pushed t
 - **Runtime:** Node.js 20 + Playwright (Chrome)
 - **SDK:** Apify SDK v3 + Crawlee v3
 - **Proxy:** Residential proxy rotation (required for LinkedIn)
-- **Anti-bot:** Session pool (max 20 uses), random delays (1500-4000ms), 3 retries with retryOnBlocked, cookie acceptance
-- **Pagination:** Infinite scroll with automatic load-more detection
+- **Anti-bot:** Session pool (max 20 uses), random delays (1500-4000ms), 3 retries with retryOnBlocked, authwall detection with session rotation
+- **Pagination:** Offset paging over LinkedIn's public guest job endpoints, bounded by your limits
 - **Deduplication:** By LinkedIn job ID across all searches
+- **Efficiency:** Images, media, and fonts are blocked, since job data comes from markup only
 
 ## Responsible Use
 

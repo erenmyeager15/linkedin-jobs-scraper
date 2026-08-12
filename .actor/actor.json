@@ -1,8 +1,8 @@
 {
   "actorSpecification": 1,
   "name": "linkedin-jobs-scraper",
-  "title": "LinkedIn Jobs Scraper - Under Maintenance",
-  "description": "Temporarily under maintenance. Runs exit without scraping, saving records, or charging job-scraped events.",
+  "title": "LinkedIn Jobs Scraper - Listings, Salaries & Skills",
+  "description": "Scrape public LinkedIn job listings by keyword and location: title, company, location, workplace type, job type, seniority, posted date, salary when shown, skills, and apply URL. No login or cookies required.",
   "version": "1.0",
   "dockerfile": "Dockerfile",
   "input": "../INPUT_SCHEMA.json",
