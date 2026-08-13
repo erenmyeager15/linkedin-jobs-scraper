@@ -1,7 +1,7 @@
 {
   "actorSpecification": 1,
   "name": "linkedin-jobs-scraper",
-  "title": "LinkedIn Jobs Scraper - Listings, Salaries & Skills",
+  "title": "LinkedIn Jobs Scraper - $1/1k, Salaries & Skills",
   "description": "Scrape public LinkedIn job listings by keyword and location: title, company, location, workplace type, job type, seniority, posted date, salary when shown, skills, and apply URL. No login or cookies required.",
   "version": "1.0",
   "dockerfile": "Dockerfile",

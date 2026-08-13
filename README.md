@@ -1,4 +1,4 @@
-# LinkedIn Jobs Scraper — Extract Job Listings at Scale
+# LinkedIn Jobs Scraper - $1/1k, Salaries & Skills
 
 > **Unofficial Actor.** This tool is independent and is **not affiliated with, endorsed by, or sponsored by LinkedIn**. It collects only publicly available job listings and never uses LinkedIn credentials, cookies, or private APIs.
 
