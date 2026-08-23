@@ -2,19 +2,26 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   buildDetailUrl,
+  buildDirectJobRequests,
+  buildInitialRequests,
   buildSearchRequests,
   buildSearchUrl,
+  canonicalJobUrl,
   canSaveMore,
   createBudget,
   detailAllowance,
   detailOrCard,
   hasUsableJobData,
   inferSkills,
+  extractLinkedInJobId,
   isBlockedStatus,
   isBlockedUrl,
   isFinished,
   looksBlockedText,
   maxRequestsForRun,
+  normalizeLinkedInSearchUrl,
+  normalizePostedAt,
+  parseSalaryRange,
   registerCharge,
   releaseEnqueued,
   releaseSave,
@@ -22,6 +29,8 @@ import {
   reserveSave,
   resolveLimits,
   searchKey,
+  validateInputModes,
+  wasPushedRecordSaved,
 } from './lib.js';
 import type { ActorInput } from './types.js';
 
@@ -32,8 +41,8 @@ const baseInput: ActorInput = {
 
 test('limit defaults match the published input schema', () => {
   const limits = resolveLimits({});
-  assert.equal(limits.maxResults, 50);
-  assert.equal(limits.maxJobsPerSearch, 25);
+  assert.equal(limits.maxResults, 5);
+  assert.equal(limits.maxJobsPerSearch, 5);
 });
 
 test('limits are clamped and a per-search cap never exceeds the total cap', () => {
@@ -45,7 +54,15 @@ test('limits are clamped and a per-search cap never exceeds the total cap', () =
 test('search URL targets the guest endpoint and maps every filter code', () => {
   const url = new URL(
     buildSearchUrl(
-      { workplaceType: ['remote'], jobType: ['full-time'], experienceLevel: ['mid-senior'] },
+      {
+        workplaceType: ['remote'],
+        jobType: ['full-time'],
+        experienceLevel: ['mid-senior'],
+        datePosted: 'past-week',
+        easyApplyOnly: true,
+        sortBy: 'recent',
+        minimumSalary: '80000',
+      },
       'data engineer',
       'Berlin',
       20,
@@ -59,6 +76,10 @@ test('search URL targets the guest endpoint and maps every filter code', () => {
   assert.equal(url.searchParams.get('f_WT'), '2');
   assert.equal(url.searchParams.get('f_JT'), 'F');
   assert.equal(url.searchParams.get('f_E'), '4');
+  assert.equal(url.searchParams.get('f_TPR'), 'r604800');
+  assert.equal(url.searchParams.get('f_AL'), 'true');
+  assert.equal(url.searchParams.get('sortBy'), 'DD');
+  assert.equal(url.searchParams.get('f_SB2'), '3');
 });
 
 test('unknown filter values are dropped instead of sent as empty parameters', () => {
@@ -104,6 +125,63 @@ test('detail URL uses the guest job posting endpoint', () => {
   assert.equal(
     buildDetailUrl('3812345678'),
     'https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/3812345678',
+  );
+});
+
+test('full LinkedIn search URLs preserve filters and become guest API requests', () => {
+  const normalized = normalizeLinkedInSearchUrl(
+    'https://www.linkedin.com/jobs/search/?keywords=software%20engineer&location=India&f_WT=2&f_TPR=r86400&trk=public_jobs',
+  );
+  const url = new URL(normalized.url);
+
+  assert.equal(url.origin + url.pathname, 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search');
+  assert.equal(url.searchParams.get('keywords'), 'software engineer');
+  assert.equal(url.searchParams.get('location'), 'India');
+  assert.equal(url.searchParams.get('f_WT'), '2');
+  assert.equal(url.searchParams.get('f_TPR'), 'r86400');
+  assert.equal(url.searchParams.get('start'), '0');
+  assert.equal(normalized.sourceSearchUrl.includes('trk='), false);
+});
+
+test('direct LinkedIn job URLs are validated, deduplicated, and canonicalized', () => {
+  const id = extractLinkedInJobId(
+    'https://www.linkedin.com/jobs/view/senior-engineer-3812345678/?trackingId=x',
+  );
+  assert.equal(id, '3812345678');
+  assert.equal(canonicalJobUrl(id), 'https://www.linkedin.com/jobs/view/3812345678');
+
+  const requests = buildDirectJobRequests({
+    jobUrls: [
+      'https://www.linkedin.com/jobs/view/senior-engineer-3812345678/',
+      'https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/3812345678',
+    ],
+  });
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].label, 'job-detail');
+  assert.equal(requests[0].userData.jobId, '3812345678');
+});
+
+test('keyword, search URL, and direct URL modes can be combined', () => {
+  const requests = buildInitialRequests({
+    keywords: ['software engineer'],
+    locations: ['India'],
+    searchUrls: ['https://www.linkedin.com/jobs/search/?keywords=data%20engineer&location=India'],
+    jobUrls: ['https://www.linkedin.com/jobs/view/3812345678'],
+  });
+
+  assert.equal(requests.filter((request) => request.label === 'search').length, 2);
+  assert.equal(requests.filter((request) => request.label === 'job-detail').length, 1);
+});
+
+test('input requires one complete search or direct URL mode', () => {
+  assert.throws(() => validateInputModes({ keywords: ['engineer'] }), /both keywords and locations/);
+  assert.throws(() => validateInputModes({}), /Provide keywords/);
+  assert.doesNotThrow(() => validateInputModes({
+    searchUrls: ['https://www.linkedin.com/jobs/search/?keywords=engineer'],
+  }));
+  assert.throws(
+    () => normalizeLinkedInSearchUrl('https://linkedin.example/jobs/search/?keywords=engineer'),
+    /linkedin\.com/,
   );
 });
 
@@ -267,4 +345,31 @@ test('skill inference matches whole tokens only', () => {
 test('skill inference returns nothing without a description', () => {
   assert.deepEqual(inferSkills(null), []);
   assert.deepEqual(inferSkills('We value teamwork and clear writing.'), []);
+});
+
+test('salary ranges are normalized without guessing missing bounds', () => {
+  assert.deepEqual(parseSalaryRange('$120,000 - $180,000 / year'), {
+    salaryMin: 120000,
+    salaryMax: 180000,
+    salaryCurrency: '$',
+    salaryPeriod: 'YEAR',
+  });
+  assert.deepEqual(parseSalaryRange('EUR 80K+ per annum'), {
+    salaryMin: 80000,
+    salaryMax: null,
+    salaryCurrency: 'EUR',
+    salaryPeriod: 'YEAR',
+  });
+});
+
+test('posting dates normalize ISO and relative values', () => {
+  const now = new Date('2026-08-23T12:00:00.000Z');
+  assert.equal(normalizePostedAt('2026-08-20', now), '2026-08-20T00:00:00.000Z');
+  assert.equal(normalizePostedAt('Posted 2 days ago', now), '2026-08-21T12:00:00.000Z');
+});
+
+test('atomic push results distinguish a saved record from a rejected charge', () => {
+  assert.equal(wasPushedRecordSaved({ chargedCount: 1, eventChargeLimitReached: true }), true);
+  assert.equal(wasPushedRecordSaved({ chargedCount: 0, eventChargeLimitReached: true }), false);
+  assert.equal(wasPushedRecordSaved({ chargedCount: 0, eventChargeLimitReached: false }), true);
 });

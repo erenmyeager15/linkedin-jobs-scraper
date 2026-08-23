@@ -1,8 +1,8 @@
 {
   "actorSpecification": 1,
   "name": "linkedin-jobs-scraper",
-  "title": "LinkedIn Jobs Scraper - $1/1k, Salaries & Skills",
-  "description": "Scrape public LinkedIn job listings by keyword and location: title, company, location, workplace type, job type, seniority, posted date, salary when shown, skills, and apply URL. No login or cookies required.",
+  "title": "LinkedIn Jobs Scraper - $1/1k, URLs & Job Data",
+  "description": "Scrape public LinkedIn Jobs by keywords, full search URLs, or job URLs. Get salaries, skills, company data, clean descriptions, dates, filters, and external apply links. No login.",
   "version": "1.0",
   "dockerfile": "Dockerfile",
   "readme": "../README.md",
@@ -10,7 +10,7 @@
   "output": "./output_schema.json",
   "exampleRunInput": {
     "contentType": "application/json; charset=utf-8",
-    "body": "{\"keywords\":[\"software engineer\"],\"locations\":[\"London, UK\"],\"maxResults\":10,\"maxJobsPerSearch\":10,\"proxyConfiguration\":{\"useApifyProxy\":true,\"apifyProxyGroups\":[\"RESIDENTIAL\"]}}"
+    "body": "{\"keywords\":[\"software engineer\"],\"locations\":[\"United States\"],\"workplaceType\":[\"remote\"],\"datePosted\":\"past-week\",\"maxResults\":5,\"maxJobsPerSearch\":5,\"proxyConfiguration\":{\"useApifyProxy\":true,\"apifyProxyGroups\":[\"RESIDENTIAL\"]}}"
   },
   "pricingInfo": {
     "pricingModel": "PAY_PER_EVENT",
@@ -33,11 +33,11 @@
       }
     }
   },
-  "categories": ["JOBS", "BUSINESS"],
+  "categories": ["JOBS", "LEAD_GENERATION", "BUSINESS"],
   "minMemoryMbytes": 1024,
   "maxMemoryMbytes": 4096,
   "defaultRunOptions": {
-    "memoryMbytes": 2048,
+    "memoryMbytes": 1024,
     "timeoutSecs": 43200
   },
   "storages": {

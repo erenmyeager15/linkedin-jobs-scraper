@@ -6,31 +6,49 @@
       "jobTitle": { "type": ["string", "null"], "title": "Job Title", "example": "Senior Software Engineer" },
       "companyName": { "type": ["string", "null"], "title": "Company", "example": "Acme Corp" },
       "companyLinkedInUrl": { "type": ["string", "null"], "title": "Company LinkedIn URL", "example": "https://www.linkedin.com/company/acme/" },
+      "companyLogoUrl": { "type": ["string", "null"], "title": "Company Logo" },
       "jobLocation": { "type": ["string", "null"], "title": "Location", "example": "London, UK" },
+      "country": { "type": ["string", "null"], "title": "Country", "example": "GB" },
       "workplaceType": { "type": ["string", "null"], "title": "Workplace", "example": "Hybrid" },
       "jobType": { "type": ["string", "null"], "title": "Job Type", "example": "Full-time" },
       "experienceLevel": { "type": ["string", "null"], "title": "Level", "example": "Mid-Senior level" },
-      "salaryRange": { "type": ["string", "null"], "title": "Salary", "example": "$120,000 - $150,000" },
       "postedDate": { "type": ["string", "null"], "title": "Posted", "example": "2 days ago" },
+      "postedAt": { "type": ["string", "null"], "title": "Posted At", "example": "2026-08-20T00:00:00.000Z" },
+      "expiresAt": { "type": ["string", "null"], "title": "Expires At", "example": "2026-09-20T23:59:59.000Z" },
       "numberOfApplicants": { "type": ["integer", "null"], "title": "Applicants", "example": 47 },
-      "jobDescription": { "type": ["string", "null"], "title": "Job Description", "example": "Build and maintain production software systems." },
+      "jobDescription": { "type": ["string", "null"], "title": "Job Description" },
+      "jobDescriptionHtml": { "type": ["string", "null"], "title": "Job Description HTML" },
+      "responsibilities": { "type": ["string", "null"], "title": "Responsibilities" },
+      "qualifications": { "type": ["string", "null"], "title": "Qualifications" },
+      "benefits": { "type": "array", "title": "Benefits", "items": { "type": "string" } },
       "requiredSkills": { "type": "array", "title": "Skills", "items": { "type": "string" }, "example": ["Python", "AWS"] },
+      "salaryRange": { "type": ["string", "null"], "title": "Salary", "example": "$120,000 - $150,000 / year" },
+      "salaryMin": { "type": ["number", "null"], "title": "Salary Minimum", "example": 120000 },
+      "salaryMax": { "type": ["number", "null"], "title": "Salary Maximum", "example": 150000 },
+      "salaryCurrency": { "type": ["string", "null"], "title": "Salary Currency", "example": "USD" },
+      "salaryPeriod": { "type": ["string", "null"], "title": "Salary Period", "example": "YEAR" },
+      "jobFunctions": { "type": "array", "title": "Job Functions", "items": { "type": "string" } },
+      "industries": { "type": "array", "title": "Industries", "items": { "type": "string" } },
       "easyApply": { "type": "boolean", "title": "Easy Apply", "example": true },
-      "companyIndustry": { "type": ["string", "null"], "title": "Industry", "example": "Software Development" },
-      "companySize": { "type": ["string", "null"], "title": "Company Size", "example": "1,001-5,000 employees" },
-      "applyUrl": { "type": ["string", "null"], "title": "Apply URL", "example": "https://www.linkedin.com/jobs/view/123" },
+      "companyIndustry": { "type": ["string", "null"], "title": "Company Industry" },
+      "companySize": { "type": ["string", "null"], "title": "Company Size" },
+      "jobUrl": { "type": "string", "title": "LinkedIn Job URL", "example": "https://www.linkedin.com/jobs/view/123" },
+      "applyUrl": { "type": ["string", "null"], "title": "External Apply URL", "example": "https://company.example/jobs/123" },
       "jobId": { "type": "string", "title": "Job ID", "example": "3812345678" },
       "keywordUsed": { "type": "string", "title": "Keyword", "example": "software engineer" },
       "locationUsed": { "type": "string", "title": "Search Location", "example": "London, UK" },
-      "scrapedAt": { "type": "string", "title": "Scraped At", "example": "2026-06-10T12:00:00.000Z" }
+      "sourceSearchUrl": { "type": ["string", "null"], "title": "Source Search URL" },
+      "resultPosition": { "type": ["integer", "null"], "title": "Result Position", "example": 1 },
+      "scrapedAt": { "type": "string", "title": "Scraped At", "example": "2026-08-23T12:00:00.000Z" }
     }
   },
   "views": {
     "overview": {
       "title": "LinkedIn Jobs",
-      "description": "Job listings scraped from LinkedIn.",
+      "description": "Public job listings scraped from LinkedIn.",
       "transformation": {
         "fields": [
+          "companyLogoUrl",
           "jobTitle",
           "companyName",
           "jobLocation",
@@ -38,9 +56,10 @@
           "jobType",
           "experienceLevel",
           "salaryRange",
-          "postedDate",
+          "postedAt",
           "numberOfApplicants",
           "easyApply",
+          "jobUrl",
           "applyUrl",
           "scrapedAt"
         ]
@@ -48,6 +67,7 @@
       "display": {
         "component": "table",
         "properties": {
+          "companyLogoUrl": { "label": "Logo", "format": "image" },
           "jobTitle": { "label": "Job Title", "format": "text" },
           "companyName": { "label": "Company", "format": "text" },
           "jobLocation": { "label": "Location", "format": "text" },
@@ -55,10 +75,11 @@
           "jobType": { "label": "Type", "format": "text" },
           "experienceLevel": { "label": "Level", "format": "text" },
           "salaryRange": { "label": "Salary", "format": "text" },
-          "postedDate": { "label": "Posted", "format": "text" },
+          "postedAt": { "label": "Posted", "format": "date" },
           "numberOfApplicants": { "label": "Applicants", "format": "number" },
           "easyApply": { "label": "Easy Apply", "format": "boolean" },
-          "applyUrl": { "label": "Apply", "format": "link" },
+          "jobUrl": { "label": "LinkedIn Job", "format": "link" },
+          "applyUrl": { "label": "External Apply", "format": "link" },
           "scrapedAt": { "label": "Scraped At", "format": "date" }
         }
       }

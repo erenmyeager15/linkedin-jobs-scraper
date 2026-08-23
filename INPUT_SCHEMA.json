@@ -1,25 +1,43 @@
 {
   "title": "LinkedIn Jobs Scraper Input",
-  "description": "Configure your LinkedIn Jobs scraping run",
+  "description": "Search by keywords and locations, paste complete LinkedIn Jobs search URLs to preserve every filter, or scrape individual public job URLs. Start with 1-5 results and Residential proxy.",
   "type": "object",
   "schemaVersion": 1,
-  "required": ["keywords", "locations"],
+  "required": [],
   "properties": {
+    "searchUrls": {
+      "title": "LinkedIn Jobs Search URLs",
+      "type": "array",
+      "description": "Optional full linkedin.com/jobs/search URLs. Existing LinkedIn filters are preserved and paginated automatically.",
+      "editor": "stringList",
+      "items": { "type": "string" },
+      "maxItems": 20,
+      "default": []
+    },
+    "jobUrls": {
+      "title": "Individual LinkedIn Job URLs",
+      "type": "array",
+      "description": "Optional public linkedin.com/jobs/view URLs for direct job-detail extraction.",
+      "editor": "stringList",
+      "items": { "type": "string" },
+      "maxItems": 100,
+      "default": []
+    },
     "keywords": {
       "title": "Job Keywords",
       "type": "array",
-      "description": "Job titles, skills, or search terms to query",
+      "description": "Job titles, skills, or search terms. Use together with locations.",
       "editor": "stringList",
-      "prefill": ["software engineer"],
-      "default": ["software engineer"]
+      "items": { "type": "string" },
+      "default": []
     },
     "locations": {
       "title": "Locations",
       "type": "array",
-      "description": "City, region, or country for job search",
+      "description": "City, region, or country. Use together with keywords.",
       "editor": "stringList",
-      "prefill": ["London, UK"],
-      "default": ["London, UK"]
+      "items": { "type": "string" },
+      "default": []
     },
     "workplaceType": {
       "title": "Workplace Type",
@@ -45,12 +63,45 @@
       "items": { "type": "string", "enum": ["internship", "entry", "associate", "mid-senior", "director", "executive"] },
       "default": []
     },
+    "datePosted": {
+      "title": "Date Posted",
+      "type": "string",
+      "description": "Filter jobs by how recently LinkedIn posted them.",
+      "editor": "select",
+      "enum": ["anytime", "past-24h", "past-week", "past-month"],
+      "enumTitles": ["Any time", "Past 24 hours", "Past week", "Past month"],
+      "default": "anytime"
+    },
+    "easyApplyOnly": {
+      "title": "Easy Apply Only",
+      "type": "boolean",
+      "description": "Only return jobs marked with LinkedIn Easy Apply.",
+      "editor": "checkbox",
+      "default": false
+    },
+    "sortBy": {
+      "title": "Sort Results",
+      "type": "string",
+      "description": "Sort keyword searches by relevance or newest first.",
+      "editor": "select",
+      "enum": ["relevance", "recent"],
+      "enumTitles": ["Most relevant", "Most recent"],
+      "default": "relevance"
+    },
+    "minimumSalary": {
+      "title": "Minimum Salary",
+      "type": "string",
+      "description": "Optional LinkedIn salary threshold. Availability and currency depend on the selected market.",
+      "editor": "select",
+      "enum": ["40000", "60000", "80000", "100000", "120000"],
+      "enumTitles": ["40,000+", "60,000+", "80,000+", "100,000+", "120,000+"]
+    },
     "maxResults": {
       "title": "Max Results (total)",
       "type": "integer",
       "description": "Maximum number of jobs to scrape across all searches",
       "editor": "number",
-      "default": 50,
+      "default": 5,
       "maximum": 5000,
       "minimum": 1
     },
@@ -59,7 +110,7 @@
       "type": "integer",
       "description": "Maximum jobs to scrape per keyword + location combination",
       "editor": "number",
-      "default": 25,
+      "default": 5,
       "maximum": 500,
       "minimum": 1
     },

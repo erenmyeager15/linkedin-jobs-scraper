@@ -1,4 +1,5 @@
 import type { ActorInput } from './types.js';
+import { createHash } from 'node:crypto';
 
 /** LinkedIn guest search filter codes. */
 export const WORKPLACE_MAP: Record<string, string> = {
@@ -25,9 +26,23 @@ export const EXP_LEVEL_MAP: Record<string, string> = {
   executive: '6',
 };
 
+export const DATE_POSTED_MAP: Record<string, string> = {
+  'past-24h': 'r86400',
+  'past-week': 'r604800',
+  'past-month': 'r2592000',
+};
+
+export const SALARY_MAP: Record<string, string> = {
+  40000: '1',
+  60000: '2',
+  80000: '3',
+  100000: '4',
+  120000: '5',
+};
+
 /** Defaults mirror INPUT_SCHEMA.json so API callers and UI callers behave identically. */
-export const DEFAULT_MAX_RESULTS = 50;
-export const DEFAULT_MAX_JOBS_PER_SEARCH = 25;
+export const DEFAULT_MAX_RESULTS = 5;
+export const DEFAULT_MAX_JOBS_PER_SEARCH = 5;
 export const MAX_RESULTS_LIMIT = 5000;
 export const MAX_JOBS_PER_SEARCH_LIMIT = 500;
 /** LinkedIn's guest search returns about ten cards per offset page. */
@@ -93,6 +108,8 @@ export interface SearchUserData {
   keyword: string;
   location: string;
   start: number;
+  searchId: string;
+  sourceSearchUrl: string | null;
 }
 
 export interface SearchRequestSpec {
@@ -102,13 +119,37 @@ export interface SearchRequestSpec {
   userData: SearchUserData;
 }
 
+export interface DetailRequestSpec {
+  url: string;
+  label: 'job-detail';
+  uniqueKey: string;
+  userData: {
+    jobId: string;
+    jobUrl: string;
+    keyword: string;
+    location: string;
+    searchId: string;
+    sourceSearchUrl: null;
+    resultPosition: null;
+  };
+}
+
 function filterCodes(values: string[] | undefined, map: Record<string, string>): string[] {
   if (!values?.length) return [];
   return values.map((value) => map[value.toLowerCase()]).filter((code): code is string => Boolean(code));
 }
 
 export function buildSearchUrl(
-  input: Pick<ActorInput, 'workplaceType' | 'jobType' | 'experienceLevel'>,
+  input: Pick<
+    ActorInput,
+    | 'workplaceType'
+    | 'jobType'
+    | 'experienceLevel'
+    | 'datePosted'
+    | 'easyApplyOnly'
+    | 'sortBy'
+    | 'minimumSalary'
+  >,
   keyword: string,
   location: string,
   start: number,
@@ -127,11 +168,112 @@ export function buildSearchUrl(
   const levels = filterCodes(input.experienceLevel, EXP_LEVEL_MAP);
   if (levels.length) params.set('f_E', levels.join(','));
 
+  const datePosted = input.datePosted ? DATE_POSTED_MAP[input.datePosted] : undefined;
+  if (datePosted) params.set('f_TPR', datePosted);
+
+  if (input.easyApplyOnly) params.set('f_AL', 'true');
+  if (input.sortBy === 'recent') params.set('sortBy', 'DD');
+
+  const salaryCode = input.minimumSalary ? SALARY_MAP[input.minimumSalary] : undefined;
+  if (salaryCode) params.set('f_SB2', salaryCode);
+
   return `${GUEST_SEARCH_ENDPOINT}?${params.toString()}`;
 }
 
 export function buildDetailUrl(jobId: string): string {
   return `${GUEST_DETAIL_ENDPOINT}/${jobId}`;
+}
+
+function cleanStringList(values: string[] | undefined): string[] {
+  return [...new Set((values ?? []).map((value) => String(value).replace(/\s+/g, ' ').trim()).filter(Boolean))];
+}
+
+function parseLinkedInUrl(rawValue: string, field: string): URL {
+  if (typeof rawValue !== 'string' || !rawValue.trim()) {
+    throw new Error(`Each ${field} item must be a non-empty LinkedIn URL.`);
+  }
+  if (rawValue.length > 2_048) throw new Error(`Each ${field} URL must be 2,048 characters or fewer.`);
+
+  let url: URL;
+  try {
+    url = new URL(rawValue.trim());
+  } catch {
+    throw new Error(`Invalid LinkedIn URL in ${field}: ${rawValue}`);
+  }
+
+  const hostname = url.hostname.toLowerCase();
+  const isLinkedIn = hostname === 'linkedin.com' || hostname.endsWith('.linkedin.com');
+  if (!isLinkedIn || !['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.port) {
+    throw new Error(`${field} only accepts standard public linkedin.com URLs.`);
+  }
+
+  url.protocol = 'https:';
+  url.hostname = 'www.linkedin.com';
+  url.hash = '';
+  return url;
+}
+
+function stableKey(value: string): string {
+  return createHash('sha1').update(value).digest('hex').slice(0, 16);
+}
+
+export interface NormalizedSearchUrl {
+  url: string;
+  sourceSearchUrl: string;
+  keyword: string;
+  location: string;
+}
+
+export function normalizeLinkedInSearchUrl(rawValue: string): NormalizedSearchUrl {
+  const source = parseLinkedInUrl(rawValue, 'searchUrls');
+  const validPath = /^\/jobs\/search\/?$/i.test(source.pathname)
+    || source.pathname === new URL(GUEST_SEARCH_ENDPOINT).pathname;
+  if (!validPath) {
+    throw new Error('searchUrls must contain LinkedIn Jobs search-result URLs.');
+  }
+
+  const removableParams = ['trk', 'refId', 'trackingId', 'position', 'pageNum', 'currentJobId'];
+  removableParams.forEach((name) => source.searchParams.delete(name));
+  source.searchParams.delete('start');
+  const sourceSearchUrl = source.toString();
+
+  const guest = new URL(GUEST_SEARCH_ENDPOINT);
+  source.searchParams.forEach((value, key) => guest.searchParams.append(key, value));
+  guest.searchParams.set('start', '0');
+
+  return {
+    url: guest.toString(),
+    sourceSearchUrl,
+    keyword: source.searchParams.get('keywords')?.trim() || 'Custom LinkedIn search',
+    location: source.searchParams.get('location')?.trim() || '',
+  };
+}
+
+export function extractLinkedInJobId(rawValue: string): string {
+  const url = parseLinkedInUrl(rawValue, 'jobUrls');
+  const id = url.pathname.match(/\/jobs\/view\/(?:[^/?#]*-)?(\d{6,})(?:\/|$)/i)?.[1]
+    ?? url.pathname.match(/\/jobPosting\/(\d{6,})(?:\/|$)/i)?.[1]
+    ?? url.searchParams.get('currentJobId')?.match(/^\d{6,}$/)?.[0];
+  if (!id) throw new Error(`Could not find a LinkedIn job ID in jobUrls URL: ${rawValue}`);
+  return id;
+}
+
+export function canonicalJobUrl(jobId: string): string {
+  return `https://www.linkedin.com/jobs/view/${jobId}`;
+}
+
+export function validateInputModes(input: ActorInput): void {
+  const hasKeywords = cleanStringList(input.keywords).length > 0;
+  const hasLocations = cleanStringList(input.locations).length > 0;
+  if (hasKeywords !== hasLocations) {
+    throw new Error('Keyword search requires both keywords and locations.');
+  }
+
+  const hasSearchUrls = (input.searchUrls ?? []).length > 0;
+  const hasJobUrls = (input.jobUrls ?? []).length > 0;
+  if (!hasKeywords && !hasSearchUrls && !hasJobUrls) {
+    throw new Error('Provide keywords with locations, one or more searchUrls, or one or more jobUrls.');
+  }
 }
 
 /**
@@ -140,24 +282,84 @@ export function buildDetailUrl(jobId: string): string {
  */
 export function buildSearchRequests(input: ActorInput, _limits?: RunLimits): SearchRequestSpec[] {
   const requests: SearchRequestSpec[] = [];
-  const seen = new Set<string>();
+  const seenUrls = new Set<string>();
 
-  for (const keyword of input.keywords) {
-    for (const location of input.locations) {
+  for (const keyword of cleanStringList(input.keywords)) {
+    for (const location of cleanStringList(input.locations)) {
       const key = searchKey(keyword, location);
-      if (seen.has(key)) continue;
-      seen.add(key);
+      const url = buildSearchUrl(input, keyword, location, 0);
+      if (seenUrls.has(url)) continue;
+      seenUrls.add(url);
 
       requests.push({
-        url: buildSearchUrl(input, keyword, location, 0),
+        url,
         label: 'search',
         uniqueKey: `search-${key}-0`,
-        userData: { keyword, location, start: 0 },
+        userData: {
+          keyword,
+          location,
+          start: 0,
+          searchId: key,
+          sourceSearchUrl: null,
+        },
       });
     }
   }
 
+  const searchUrls = input.searchUrls ?? [];
+  if (searchUrls.length > 20) throw new Error('searchUrls supports at most 20 URLs.');
+  for (const rawUrl of searchUrls) {
+    const normalized = normalizeLinkedInSearchUrl(rawUrl);
+    if (seenUrls.has(normalized.url)) continue;
+    seenUrls.add(normalized.url);
+    const id = stableKey(normalized.url);
+    requests.push({
+      url: normalized.url,
+      label: 'search',
+      uniqueKey: `search-url-${id}-0`,
+      userData: {
+        keyword: normalized.keyword,
+        location: normalized.location,
+        start: 0,
+        searchId: `url:${id}`,
+        sourceSearchUrl: normalized.sourceSearchUrl,
+      },
+    });
+  }
+
   return requests;
+}
+
+export function buildDirectJobRequests(input: Pick<ActorInput, 'jobUrls'>): DetailRequestSpec[] {
+  const rawUrls = input.jobUrls ?? [];
+  if (rawUrls.length > 100) throw new Error('jobUrls supports at most 100 URLs.');
+
+  const requests: DetailRequestSpec[] = [];
+  const seenIds = new Set<string>();
+  for (const rawUrl of rawUrls) {
+    const jobId = extractLinkedInJobId(rawUrl);
+    if (seenIds.has(jobId)) continue;
+    seenIds.add(jobId);
+    requests.push({
+      url: buildDetailUrl(jobId),
+      label: 'job-detail',
+      uniqueKey: `detail-${jobId}`,
+      userData: {
+        jobId,
+        jobUrl: canonicalJobUrl(jobId),
+        keyword: 'Direct job URL',
+        location: '',
+        searchId: `direct:${jobId}`,
+        sourceSearchUrl: null,
+        resultPosition: null,
+      },
+    });
+  }
+  return requests;
+}
+
+export function buildInitialRequests(input: ActorInput): Array<SearchRequestSpec | DetailRequestSpec> {
+  return [...buildSearchRequests(input), ...buildDirectJobRequests(input)];
 }
 
 export type StopReason = 'max-results' | 'charge-limit' | null;
@@ -309,6 +511,105 @@ export function hasUsableJobData(record: {
 }): boolean {
   if (!record.jobTitle) return false;
   return Boolean(record.companyName) || Boolean(record.jobDescription);
+}
+
+export interface SalaryParts {
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryCurrency: string | null;
+  salaryPeriod: string | null;
+}
+
+export function parseSalaryRange(value: string | null | undefined): SalaryParts {
+  if (!value) {
+    return { salaryMin: null, salaryMax: null, salaryCurrency: null, salaryPeriod: null };
+  }
+
+  const amounts = [...value.matchAll(/(\d[\d,]*(?:\.\d+)?)\s*([kKmM])?/g)]
+    .map((match) => {
+      const base = Number(match[1].replace(/,/g, ''));
+      if (!Number.isFinite(base)) return null;
+      const suffix = match[2]?.toLowerCase();
+      if (suffix === 'k') return Math.round(base * 1_000);
+      if (suffix === 'm') return Math.round(base * 1_000_000);
+      return Math.round(base);
+    })
+    .filter((amount): amount is number => amount !== null);
+
+  const currency = value.match(/\b(?:USD|GBP|EUR|INR|AUD|CAD|SGD|AED|JPY)\b/i)?.[0]?.toUpperCase()
+    ?? value.match(/[$£€₹]/)?.[0]
+    ?? null;
+  const periodMatch = value.match(
+    /(?:\/|\bper\s+)?(year|yr|annum|annual|hour|hr|month|week|day)\b/i,
+  )?.[1]?.toLowerCase();
+  const periodMap: Record<string, string> = {
+    year: 'YEAR',
+    yr: 'YEAR',
+    annum: 'YEAR',
+    annual: 'YEAR',
+    hour: 'HOUR',
+    hr: 'HOUR',
+    month: 'MONTH',
+    week: 'WEEK',
+    day: 'DAY',
+  };
+
+  return {
+    salaryMin: amounts[0] ?? null,
+    salaryMax: amounts[1] ?? null,
+    salaryCurrency: currency,
+    salaryPeriod: periodMatch ? periodMap[periodMatch] : null,
+  };
+}
+
+export function normalizePostedAt(
+  value: string | null | undefined,
+  now = new Date(),
+): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+
+  if (/^\d{4}-\d{2}-\d{2}(?:T|$)/.test(trimmed)) {
+    const parsed = new Date(trimmed);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  }
+
+  const lower = trimmed.toLowerCase();
+  if (lower.includes('today')) return now.toISOString();
+  if (lower.includes('yesterday')) {
+    return new Date(now.getTime() - 86_400_000).toISOString();
+  }
+
+  const relative = lower.match(/(\d+)\s+(minute|hour|day|week|month|year)s?\s+ago/);
+  if (!relative) return null;
+  const count = Number(relative[1]);
+  const unitMs: Record<string, number> = {
+    minute: 60_000,
+    hour: 3_600_000,
+    day: 86_400_000,
+    week: 604_800_000,
+    month: 2_592_000_000,
+    year: 31_536_000_000,
+  };
+  return new Date(now.getTime() - count * unitMs[relative[2]]).toISOString();
+}
+
+export function mergeUniqueStrings(...groups: Array<Array<string | null | undefined> | null | undefined>): string[] {
+  return [...new Set(
+    groups
+      .flatMap((group) => group ?? [])
+      .map((value) => String(value ?? '').replace(/\s+/g, ' ').trim())
+      .filter(Boolean),
+  )];
+}
+
+export interface PushDataChargeResult {
+  chargedCount: number;
+  eventChargeLimitReached: boolean;
+}
+
+export function wasPushedRecordSaved(result: PushDataChargeResult): boolean {
+  return result.chargedCount > 0 || !result.eventChargeLimitReached;
 }
 
 /** Skills inferred from free text must match whole tokens, not substrings. */

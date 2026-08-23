@@ -1,11 +1,16 @@
 {
   "keywords": ["software engineer"],
-  "locations": ["London, UK"],
-  "workplaceType": [],
+  "locations": ["United States"],
+  "searchUrls": [],
+  "jobUrls": [],
+  "workplaceType": ["remote"],
   "jobType": [],
   "experienceLevel": [],
-  "maxResults": 10,
-  "maxJobsPerSearch": 10,
+  "datePosted": "past-week",
+  "easyApplyOnly": false,
+  "sortBy": "recent",
+  "maxResults": 5,
+  "maxJobsPerSearch": 5,
   "proxyConfiguration": {
     "useApifyProxy": true,
     "apifyProxyGroups": ["RESIDENTIAL"]

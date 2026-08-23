@@ -1,13 +1,13 @@
 {
   "actorOutputSchemaVersion": 1,
   "title": "LinkedIn Jobs Scraper Output",
-  "description": "Structured public LinkedIn job listing records with job titles, companies, company LinkedIn URLs, locations, workplace types, job types, experience levels, posted dates, applicant counts, descriptions, required skills, salary ranges, apply URLs, job IDs, and scraped timestamps.",
+  "description": "Structured public LinkedIn job records with company data, normalized dates and salaries, descriptions, skills, benefits, LinkedIn job URLs, external application URLs, and search-result traceability.",
   "type": "object",
   "properties": {
     "results": {
       "type": "string",
       "title": "Public LinkedIn job listing records",
-      "description": "Clean dataset items containing public LinkedIn job listing, company, location, seniority, skill, salary, and apply URL data. A record is saved only when the listing yields a real job title plus a company or description.",
+      "description": "Clean public LinkedIn job records. jobUrl always identifies the LinkedIn listing; applyUrl is reserved for a separately published employer application link. A record is saved and charged only when it contains usable job data.",
       "template": "{{links.apiDefaultDatasetUrl}}/items"
     }
   }

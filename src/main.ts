@@ -2,13 +2,15 @@ import { Actor, log } from 'apify';
 import { PlaywrightCrawler } from 'crawlee';
 import { router } from './routes.js';
 import {
-  buildSearchRequests,
+  buildInitialRequests,
   createBudget,
   maxRequestsForRun,
   releaseEnqueued,
+  reserveJob,
   resolveLimits,
   searchKey,
   shouldAllowResource,
+  validateInputModes,
 } from './lib.js';
 import { setBudget } from './state.js';
 import type { ActorInput } from './types.js';
@@ -17,8 +19,7 @@ await Actor.init();
 
 const input = await Actor.getInput<ActorInput>();
 if (!input) throw new Error('Input is required.');
-if (!input.keywords?.length) throw new Error('At least one job keyword is required.');
-if (!input.locations?.length) throw new Error('At least one location is required.');
+validateInputModes(input);
 
 const limits = resolveLimits(input);
 const budget = createBudget(limits);
@@ -37,10 +38,17 @@ if (!proxyConfiguration) {
   );
 }
 
-const searchRequests = buildSearchRequests(input, limits);
+const plannedRequests = buildInitialRequests(input);
+const initialRequests = plannedRequests.filter((request) => {
+  if (request.label !== 'job-detail') return true;
+  return reserveJob(budget, request.userData.searchId, request.userData.jobId);
+});
+const searchCount = initialRequests.filter((request) => request.label === 'search').length;
+const directJobCount = initialRequests.filter((request) => request.label === 'job-detail').length;
 
 log.info('Starting LinkedIn jobs scrape', {
-  searches: searchRequests.length,
+  searches: searchCount,
+  directJobs: directJobCount,
   maxResults: limits.maxResults,
   maxJobsPerSearch: limits.maxJobsPerSearch,
 });
@@ -63,7 +71,7 @@ const crawler = new PlaywrightCrawler({
   // three pages, for the same cost. Overlapping the anti-bot delays is what pays off.
   maxConcurrency: 5,
   // Sized for real offset paging so Crawlee never silently drops queued requests.
-  maxRequestsPerCrawl: maxRequestsForRun(limits, searchRequests.length),
+  maxRequestsPerCrawl: maxRequestsForRun(limits, searchCount),
   preNavigationHooks: [
     async ({ page }, gotoOptions) => {
       // Only the server-rendered HTML is parsed, so there is nothing to wait for
@@ -89,8 +97,13 @@ const crawler = new PlaywrightCrawler({
     // A detail page that never became a record must return its budget slot, so a
     // permanent failure does not quietly reduce the number of jobs delivered.
     if (request.label === 'job-detail') {
-      const { keyword, location } = request.userData as { keyword?: string; location?: string };
-      if (keyword && location) releaseEnqueued(budget, searchKey(keyword, location));
+      const { keyword, location, searchId } = request.userData as {
+        keyword?: string;
+        location?: string;
+        searchId?: string;
+      };
+      const key = searchId ?? (keyword && location ? searchKey(keyword, location) : null);
+      if (key) releaseEnqueued(budget, key);
     }
 
     ctxLog.error(`Request failed after retries: ${request.url}`, {
@@ -99,7 +112,7 @@ const crawler = new PlaywrightCrawler({
   },
 });
 
-await crawler.run(searchRequests);
+await crawler.run(initialRequests);
 
 log.info('Scraping complete.', {
   jobsSaved: budget.pushed,
@@ -119,7 +132,7 @@ if (budget.stopReason === 'charge-limit') {
   );
 } else if (budget.pushed === 0) {
   await Actor.setStatusMessage(
-    'No job listings matched this search. Try broader keywords or locations, or enable Apify Proxy (residential).',
+    'No job listings were saved. Try broader search terms or URLs, or enable Apify Proxy (residential).',
   );
 } else {
   await Actor.setStatusMessage(`Saved ${budget.pushed} LinkedIn job listings.`);
