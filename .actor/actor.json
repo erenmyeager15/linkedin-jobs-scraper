@@ -10,7 +10,7 @@
   "output": "./output_schema.json",
   "exampleRunInput": {
     "contentType": "application/json; charset=utf-8",
-    "body": "{\"keywords\":[\"software engineer\"],\"locations\":[\"United States\"],\"workplaceType\":[\"remote\"],\"datePosted\":\"past-week\",\"maxResults\":5,\"maxJobsPerSearch\":5,\"proxyConfiguration\":{\"useApifyProxy\":true,\"apifyProxyGroups\":[\"RESIDENTIAL\"]}}"
+    "body": "{\"keywords\":[\"software engineer\"],\"locations\":[\"United States\"],\"workplaceType\":[\"remote\"],\"datePosted\":\"past-week\",\"maxResults\":1,\"maxJobsPerSearch\":1,\"proxyConfiguration\":{\"useApifyProxy\":true,\"apifyProxyGroups\":[\"RESIDENTIAL\"]}}"
   },
   "pricingInfo": {
     "pricingModel": "PAY_PER_EVENT",

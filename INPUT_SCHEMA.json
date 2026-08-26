@@ -29,7 +29,8 @@
       "description": "Job titles, skills, or search terms. Use together with locations.",
       "editor": "stringList",
       "items": { "type": "string" },
-      "default": []
+      "default": ["software engineer"],
+      "prefill": ["software engineer"]
     },
     "locations": {
       "title": "Locations",
@@ -37,7 +38,8 @@
       "description": "City, region, or country. Use together with keywords.",
       "editor": "stringList",
       "items": { "type": "string" },
-      "default": []
+      "default": ["United States"],
+      "prefill": ["United States"]
     },
     "workplaceType": {
       "title": "Workplace Type",
@@ -45,7 +47,8 @@
       "description": "Filter by workplace type",
       "editor": "select",
       "items": { "type": "string", "enum": ["remote", "hybrid", "onsite"] },
-      "default": []
+      "default": ["remote"],
+      "prefill": ["remote"]
     },
     "jobType": {
       "title": "Job Type",
@@ -70,7 +73,8 @@
       "editor": "select",
       "enum": ["anytime", "past-24h", "past-week", "past-month"],
       "enumTitles": ["Any time", "Past 24 hours", "Past week", "Past month"],
-      "default": "anytime"
+      "default": "past-week",
+      "prefill": "past-week"
     },
     "easyApplyOnly": {
       "title": "Easy Apply Only",
@@ -101,7 +105,8 @@
       "type": "integer",
       "description": "Maximum number of jobs to scrape across all searches",
       "editor": "number",
-      "default": 5,
+      "default": 1,
+      "prefill": 1,
       "maximum": 5000,
       "minimum": 1
     },
@@ -110,7 +115,8 @@
       "type": "integer",
       "description": "Maximum jobs to scrape per keyword + location combination",
       "editor": "number",
-      "default": 5,
+      "default": 1,
+      "prefill": 1,
       "maximum": 500,
       "minimum": 1
     },
