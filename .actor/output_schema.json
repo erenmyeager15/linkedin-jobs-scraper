@@ -1,9 +1,33 @@
 {
   "actorOutputSchemaVersion": 1,
-  "title": "LinkedIn Jobs Scraper Output",
+  "title": "LinkedIn Jobs & US Hiring Monitor Output",
   "description": "Structured public LinkedIn job records with company data, normalized dates and salaries, descriptions, skills, benefits, LinkedIn job URLs, external application URLs, and search-result traceability.",
   "type": "object",
   "properties": {
+    "transportSummary": {
+      "type": "string",
+      "title": "Source transport and cost safeguards",
+      "description": "Transport, explicit proxy usage, bounded source time, source attempts, cooldown/recovery counts and terminal failures. No automatic paid fallback is enabled.",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/TRANSPORT-SUMMARY"
+    },
+    "runSummary": {
+      "type": "string",
+      "title": "Scan coverage and limits",
+      "description": "Per-search coverage, failed requests, saved/charged job counts, and whether the bounded observation batch completed. A capped scan is not complete market coverage.",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/RUN-SUMMARY"
+    },
+    "jobChanges": {
+      "type": "string",
+      "title": "Saved watchlist comparison (JSON)",
+      "description": "Available only when watchlistName is set. Check baselineCommitted and status before consuming changes. First successful scan initializes a baseline, not new-job alerts.",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/JOB-CHANGES"
+    },
+    "jobChangesCsv": {
+      "type": "string",
+      "title": "Saved watchlist comparison (CSV)",
+      "description": "One row per changed field, or one observation row when there is no tracked field change. Available only with watchlistName; JSON contains full coverage and commit metadata.",
+      "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/JOB-CHANGES-CSV"
+    },
     "results": {
       "type": "string",
       "title": "Public LinkedIn job listing records",

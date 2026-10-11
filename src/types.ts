@@ -1,4 +1,7 @@
+import type { WorkplaceResolution } from './workplace.js';
+
 export interface ActorInput {
+  transport?: 'http' | 'browser';
   keywords?: string[];
   locations?: string[];
   searchUrls?: string[];
@@ -12,9 +15,13 @@ export interface ActorInput {
   minimumSalary?: '40000' | '60000' | '80000' | '100000' | '120000';
   maxResults?: number;
   maxJobsPerSearch?: number;
+  watchlistName?: string;
+  watchlistRetentionDays?: number;
+  watchlistMaxJobs?: number;
   proxyConfiguration?: {
     useApifyProxy?: boolean;
     apifyProxyGroups?: string[];
+    proxyUrls?: string[];
   };
 }
 
@@ -26,6 +33,8 @@ export interface JobRecord {
   jobLocation: string | null;
   country: string | null;
   workplaceType: string | null;
+  workplaceEvidenceStatus: WorkplaceResolution['workplaceEvidenceStatus'];
+  workplaceEvidence: WorkplaceResolution['workplaceEvidence'];
   jobType: string | null;
   experienceLevel: string | null;
   postedDate: string | null;

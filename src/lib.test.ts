@@ -39,7 +39,7 @@ const baseInput: ActorInput = {
   locations: ['London, UK'],
 };
 
-test('limit defaults match the published input schema', () => {
+test('API calls with omitted limits retain the five-job defaults', () => {
   const limits = resolveLimits({});
   assert.equal(limits.maxResults, 5);
   assert.equal(limits.maxJobsPerSearch, 5);

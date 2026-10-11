@@ -1,6 +1,6 @@
 {
-  "title": "LinkedIn Jobs Scraper Input",
-  "description": "Search by keywords and locations, paste complete LinkedIn Jobs search URLs to preserve every filter, or scrape individual public job URLs. Start with 1-5 results and Residential proxy.",
+  "title": "LinkedIn Jobs & US Hiring Monitor Input",
+  "description": "Collect public jobs by keywords, search URLs or individual URLs. Start with one US job using direct HTTP without a proxy. Optional saved watchlists report observed field changes, not closures. LinkedIn may ignore forwarded search filters.",
   "type": "object",
   "schemaVersion": 1,
   "required": [],
@@ -8,7 +8,7 @@
     "searchUrls": {
       "title": "LinkedIn Jobs Search URLs",
       "type": "array",
-      "description": "Optional full linkedin.com/jobs/search URLs. Existing LinkedIn filters are preserved and paginated automatically.",
+      "description": "Optional full linkedin.com/jobs/search URLs. Search parameters are forwarded and pagination is bounded; LinkedIn may ignore filters. Requested workplace arrangements are checked against public role evidence.",
       "editor": "stringList",
       "items": { "type": "string" },
       "maxItems": 20,
@@ -44,16 +44,16 @@
     "workplaceType": {
       "title": "Workplace Type",
       "type": "array",
-      "description": "Filter by workplace type",
+      "description": "Require explicit workplace evidence from the public job detail. Nonmatching, unknown and conflicting arrangements are not saved or charged. LinkedIn guest search can ignore this filter; the bounded candidate scan can return fewer than maxResults. Leave empty for an unfiltered scrape.",
       "editor": "select",
       "items": { "type": "string", "enum": ["remote", "hybrid", "onsite"] },
-      "default": ["remote"],
-      "prefill": ["remote"]
+      "default": [],
+      "prefill": []
     },
     "jobType": {
       "title": "Job Type",
       "type": "array",
-      "description": "Filter by employment type",
+      "description": "Forward employment-type filters to LinkedIn. Source honoring is not independently verified.",
       "editor": "select",
       "items": { "type": "string", "enum": ["full-time", "part-time", "contract", "internship", "temporary", "volunteer"] },
       "default": []
@@ -61,7 +61,7 @@
     "experienceLevel": {
       "title": "Experience Level",
       "type": "array",
-      "description": "Filter by seniority level",
+      "description": "Forward seniority filters to LinkedIn. Source honoring is not independently verified.",
       "editor": "select",
       "items": { "type": "string", "enum": ["internship", "entry", "associate", "mid-senior", "director", "executive"] },
       "default": []
@@ -79,7 +79,7 @@
     "easyApplyOnly": {
       "title": "Easy Apply Only",
       "type": "boolean",
-      "description": "Only return jobs marked with LinkedIn Easy Apply.",
+      "description": "Request LinkedIn's Easy Apply search filter. Source honoring is not independently verified; inspect each result.",
       "editor": "checkbox",
       "default": false
     },
@@ -120,14 +120,48 @@
       "maximum": 500,
       "minimum": 1
     },
+    "watchlistName": {
+      "title": "Saved job watchlist (optional)",
+      "type": "string",
+      "description": "Leave empty for a normal scrape. Use the same 1-64 character name on Apify platform runs to compare saved job observations. Case-insensitive letters, digits, hyphens and underscores. Keep search inputs and result limits unchanged; use a new name for a different scope. Reports do not infer job closure or skip normal per-job charges.",
+      "editor": "textfield",
+      "default": ""
+    },
+    "watchlistRetentionDays": {
+      "title": "Watchlist retention days",
+      "type": "integer",
+      "description": "Retain the last known fields for jobs seen within this many days. Pruning occurs on successful watchlist commits, not automatically while idle. Ignored without watchlistName.",
+      "editor": "number",
+      "minimum": 1,
+      "maximum": 90,
+      "default": 30
+    },
+    "watchlistMaxJobs": {
+      "title": "Maximum retained watchlist jobs",
+      "type": "integer",
+      "description": "Bound saved watchlist state, keeping the most recently observed jobs first. Jobs evicted from state may be reported as newly observed if seen again. Ignored without watchlistName.",
+      "editor": "number",
+      "minimum": 1,
+      "maximum": 5000,
+      "default": 1000
+    },
+    "transport": {
+      "title": "Public source transport",
+      "type": "string",
+      "description": "Direct HTTP: browser-free, no proxy, at most 180 seconds of source work; stops on blocked responses. Browser: explicitly selected legacy mode requiring at least 1024 MB; proxy costs can exceed small-run revenue. No automatic paid fallback. An API input with an explicit proxy and no transport retains browser behavior.",
+      "editor": "select",
+      "enum": ["http", "browser"],
+      "enumTitles": ["Direct HTTP (no proxy)", "Browser (explicit proxy supported)"],
+      "default": "http",
+      "prefill": "http"
+    },
     "proxyConfiguration": {
       "title": "Proxy Configuration",
       "type": "object",
-      "description": "Apify proxy settings (residential recommended for LinkedIn)",
+      "description": "Used only in browser mode. Leave disabled for direct HTTP. Enable only when you intentionally accept proxy costs; access is not guaranteed.",
       "editor": "proxy",
       "default": {
-        "useApifyProxy": true,
-        "apifyProxyGroups": ["RESIDENTIAL"]
+        "useApifyProxy": false
       }
     }
   }

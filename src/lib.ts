@@ -1,5 +1,7 @@
 import type { ActorInput } from './types.js';
 import { createHash } from 'node:crypto';
+import { workplaceTypesFromUrl, type WorkplaceType } from './workplace.js';
+import type { TitleDiscovery } from './discovery.js';
 
 /** LinkedIn guest search filter codes. */
 export const WORKPLACE_MAP: Record<string, string> = {
@@ -40,7 +42,7 @@ export const SALARY_MAP: Record<string, string> = {
   120000: '5',
 };
 
-/** Defaults mirror INPUT_SCHEMA.json so API callers and UI callers behave identically. */
+/** API calls with omitted limits default to five; the Console schema prefills one for QA. */
 export const DEFAULT_MAX_RESULTS = 5;
 export const DEFAULT_MAX_JOBS_PER_SEARCH = 5;
 export const MAX_RESULTS_LIMIT = 5000;
@@ -110,6 +112,9 @@ export interface SearchUserData {
   start: number;
   searchId: string;
   sourceSearchUrl: string | null;
+  requestedWorkplaceTypes?: WorkplaceType[];
+  /** Local prototype metadata; not enabled by the published input schema. */
+  titleDiscovery?: TitleDiscovery;
 }
 
 export interface SearchRequestSpec {
@@ -301,6 +306,7 @@ export function buildSearchRequests(input: ActorInput, _limits?: RunLimits): Sea
           start: 0,
           searchId: key,
           sourceSearchUrl: null,
+          requestedWorkplaceTypes: workplaceTypesFromUrl(url),
         },
       });
     }
@@ -323,6 +329,7 @@ export function buildSearchRequests(input: ActorInput, _limits?: RunLimits): Sea
         start: 0,
         searchId: `url:${id}`,
         sourceSearchUrl: normalized.sourceSearchUrl,
+        requestedWorkplaceTypes: workplaceTypesFromUrl(normalized.url),
       },
     });
   }
@@ -362,7 +369,7 @@ export function buildInitialRequests(input: ActorInput): Array<SearchRequestSpec
   return [...buildSearchRequests(input), ...buildDirectJobRequests(input)];
 }
 
-export type StopReason = 'max-results' | 'charge-limit' | null;
+export type StopReason = 'max-results' | 'charge-limit' | 'time-limit' | 'rate-limit' | 'source-unavailable' | null;
 
 export interface RunBudget {
   maxResults: number;

@@ -1,16 +1,17 @@
 {
   "actorSpecification": 1,
   "name": "linkedin-jobs-scraper",
-  "title": "LinkedIn Jobs Scraper - $1/1k, URLs & Job Data",
-  "description": "Scrape public LinkedIn Jobs by keywords, full search URLs, or job URLs. Get salaries, skills, company data, clean descriptions, dates, filters, and external apply links. No login.",
-  "version": "1.0",
+  "title": "LinkedIn Jobs Scraper & US Hiring Monitor",
+  "description": "Monitor US hiring with public LinkedIn jobs, disclosed salaries, skills and workplace evidence. Compare saved observations for newly seen listings and known field changes. Export job datasets and JSON/CSV change reports. No login; no automatic paid-proxy fallback.",
+  "version": "1.5",
+  "buildTag": "staging",
   "dockerfile": "Dockerfile",
   "readme": "../README.md",
   "input": "../INPUT_SCHEMA.json",
   "output": "./output_schema.json",
   "exampleRunInput": {
     "contentType": "application/json; charset=utf-8",
-    "body": "{\"keywords\":[\"software engineer\"],\"locations\":[\"United States\"],\"workplaceType\":[\"remote\"],\"datePosted\":\"past-week\",\"maxResults\":1,\"maxJobsPerSearch\":1,\"proxyConfiguration\":{\"useApifyProxy\":true,\"apifyProxyGroups\":[\"RESIDENTIAL\"]}}"
+    "body": "{\"keywords\":[\"software engineer\"],\"locations\":[\"United States\"],\"workplaceType\":[],\"datePosted\":\"past-week\",\"maxResults\":1,\"maxJobsPerSearch\":1,\"transport\":\"http\",\"proxyConfiguration\":{\"useApifyProxy\":false}}"
   },
   "pricingInfo": {
     "pricingModel": "PAY_PER_EVENT",
@@ -34,11 +35,11 @@
     }
   },
   "categories": ["JOBS", "LEAD_GENERATION", "BUSINESS"],
-  "minMemoryMbytes": 1024,
+  "minMemoryMbytes": 256,
   "maxMemoryMbytes": 4096,
   "defaultRunOptions": {
-    "memoryMbytes": 1024,
-    "timeoutSecs": 43200
+    "memoryMbytes": 256,
+    "timeoutSecs": 3600
   },
   "storages": {
     "dataset": "./dataset_schema.json"

@@ -9,7 +9,9 @@
       "companyLogoUrl": { "type": ["string", "null"], "title": "Company Logo" },
       "jobLocation": { "type": ["string", "null"], "title": "Location", "example": "London, UK" },
       "country": { "type": ["string", "null"], "title": "Country", "example": "GB" },
-      "workplaceType": { "type": ["string", "null"], "title": "Workplace", "example": "Hybrid" },
+      "workplaceType": { "type": ["string", "null"], "title": "Workplace", "example": "Hybrid", "description": "Explicit role arrangement when supported by public evidence; unknown or conflicting evidence is null." },
+      "workplaceEvidenceStatus": { "type": "string", "title": "Workplace evidence status", "description": "explicit, unknown or conflicting; a public source statement, not verification of actual employment conditions." },
+      "workplaceEvidence": { "type": "array", "title": "Workplace source evidence", "description": "Bounded source excerpts and source types supporting the arrangement. Generic benefits and company policies are not role evidence.", "items": { "type": "object", "properties": { "type": { "type": "string" }, "source": { "type": "string" }, "text": { "type": "string" } } } },
       "jobType": { "type": ["string", "null"], "title": "Job Type", "example": "Full-time" },
       "experienceLevel": { "type": ["string", "null"], "title": "Level", "example": "Mid-Senior level" },
       "postedDate": { "type": ["string", "null"], "title": "Posted", "example": "2 days ago" },
@@ -43,6 +45,31 @@
     }
   },
   "views": {
+    "usHiring": {
+      "title": "US hiring & salary research",
+      "description": "Public listing observations, disclosed salary units and workplace evidence. Missing fields are unknown; salary is not estimated.",
+      "transformation": {
+        "fields": ["jobTitle", "companyName", "jobLocation", "salaryRange", "salaryCurrency", "salaryPeriod", "workplaceType", "workplaceEvidenceStatus", "requiredSkills", "postedAt", "jobUrl", "applyUrl", "scrapedAt"]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "jobTitle": { "label": "Role", "format": "text" },
+          "companyName": { "label": "Employer", "format": "text" },
+          "jobLocation": { "label": "Location", "format": "text" },
+          "salaryRange": { "label": "Disclosed salary", "format": "text" },
+          "salaryCurrency": { "label": "Source currency", "format": "text" },
+          "salaryPeriod": { "label": "Pay period", "format": "text" },
+          "workplaceType": { "label": "Arrangement", "format": "text" },
+          "workplaceEvidenceStatus": { "label": "Workplace evidence", "format": "text" },
+          "requiredSkills": { "label": "Extracted skills", "format": "array" },
+          "postedAt": { "label": "Posted date", "format": "date" },
+          "jobUrl": { "label": "LinkedIn listing", "format": "link" },
+          "applyUrl": { "label": "Published apply link", "format": "link" },
+          "scrapedAt": { "label": "Observed at", "format": "date" }
+        }
+      }
+    },
     "overview": {
       "title": "LinkedIn Jobs",
       "description": "Public job listings scraped from LinkedIn.",
